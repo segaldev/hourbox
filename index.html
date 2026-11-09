@@ -248,6 +248,10 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 .field input[type=password] { border: 1px solid var(--line); background: var(--paper); border-radius: 9px; padding: 8px 10px; width: 100%; font-family: var(--f-mono); }
 .field input[type=password]:focus { outline: none; border-color: var(--accent); background: var(--surface); }
 .setup-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.btn.google { display: inline-flex; align-items: center; gap: 10px; padding: 9px 16px; font-weight: 600; background: var(--surface); border-color: var(--line); }
+.btn.google:hover { border-color: var(--muted); }
+.linkbtn { border: 0; background: none; padding: 0; color: var(--accent); text-decoration: underline; font: inherit; }
+.banner .btn { margin-left: 8px; padding: 3px 10px; }
 .setup.routine { max-width: 860px; margin-bottom: 16px; }
 .rt-list { display: grid; gap: 8px; margin: 6px 0 10px; }
 .rt-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); }
@@ -421,151 +425,143 @@ const mutateDay = (k, fn, opts) => mutate(dayId(k), getDay(k), fn, opts);
 const mutatePark = (fn, opts) => mutate("parking", getPark(), fn, opts);
 
 // ---------- persistence ----------
-const LS_KEY = "hourbox-v1";          // offline cache of your plans on this device
-const CFG_KEY = "hourbox-github";     // repo + token for this device (never leaves this browser except to api.github.com)
-const DATA_PATH = "hourbox.json";
+const LS_KEY = "hourbox-v1";          // plans for "use without an account" mode (this device only)
+const CFG_KEY = "hourbox-github";     // old GitHub version: repo + token, kept only until you import
 const lsGet = k => { try { return JSON.parse(localStorage.getItem(k) || "null"); } catch (e) { return null; } };
 const lsSet = (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
-const b64enc = s => { const b = new TextEncoder().encode(s); let bin = ""; for (let i = 0; i < b.length; i += 0x8000) bin += String.fromCharCode.apply(null, b.subarray(i, i + 0x8000)); return btoa(bin); };
 const b64dec = s => new TextDecoder().decode(Uint8Array.from(atob(s.replace(/\s/g, "")), c => c.charCodeAt(0)));
 
+// ---------- Firebase ----------
+// This config only identifies the Firebase project; it is public by design.
+// Your data is protected by Firestore security rules: each signed-in user can read and write only users/<their id>/.
+const FIREBASE_CONFIG = null;
+const FB_VER = "10.14.1";
+const USE_EMULATOR = new URLSearchParams(location.search).has("emulator");
+const FB = { m: null, app: null, auth: null, db: null, user: null };
+async function loadFirebase() {
+  const base = `https://www.gstatic.com/firebasejs/${FB_VER}/`;
+  const mods = await Promise.all(["firebase-app.js", "firebase-auth.js", "firebase-firestore.js"].map(f => import(base + f)));
+  FB.m = Object.assign({}, ...mods);
+  const cfg = USE_EMULATOR ? { apiKey: "demo-key", authDomain: "localhost", projectId: "demo-hourbox", appId: "demo" } : FIREBASE_CONFIG;
+  if (!cfg) throw new Error("not-configured");
+  FB.app = FB.m.initializeApp(cfg);
+  FB.auth = FB.m.getAuth(FB.app);
+  FB.db = FB.m.initializeFirestore(FB.app, { ignoreUndefinedProperties: true,
+    localCache: FB.m.persistentLocalCache({ tabManager: FB.m.persistentMultipleTabManager() }) });
+  if (USE_EMULATOR) { FB.m.connectAuthEmulator(FB.auth, "http://127.0.0.1:9099", { disableWarnings: true }); FB.m.connectFirestoreEmulator(FB.db, "127.0.0.1", 8080); }
+}
+const userDocs = () => FB.m.collection(FB.db, "users", FB.user.uid, "docs");
+
+// Old GitHub version: read-only, used once to import your plans.
 const GH = {
   cfg: null,
-  async req(path, opts = {}) {
-    let r;
-    try {
-      r = await fetch("https://api.github.com" + path, Object.assign({}, opts, { cache: "no-store", headers: Object.assign({
-        Authorization: "Bearer " + this.cfg.token, Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" }, opts.headers || {}) }));
-    } catch (e) { throw { kind: "network" }; }
-    return r;
+  async req(path) {
+    try { return await fetch("https://api.github.com" + path, { cache: "no-store", headers: { Authorization: "Bearer " + this.cfg.token, Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" } }); }
+    catch (e) { throw { kind: "network" }; }
   },
   repoPath() { return `/repos/${encodeURIComponent(this.cfg.owner)}/${encodeURIComponent(this.cfg.repo)}`; },
-  async checkRepo() {
-    const r = await this.req(this.repoPath());
-    if (r.status === 401) throw { kind: "auth", msg: "GitHub didn’t accept that token. Check it was copied in full and hasn’t expired." };
-    if (r.status === 404 || r.status === 403) throw { kind: "repo", msg: `Can’t open ${this.cfg.owner}/${this.cfg.repo}. Check the name, and that the token was given access to this repository.` };
-    if (!r.ok) throw { kind: "other", msg: "GitHub returned an error (" + r.status + "). Try again in a minute." };
-    const j = await r.json();
-    if (!j.private) throw { kind: "public", msg: `${this.cfg.owner}/${this.cfg.repo} is public. Make it private first, so your plans stay private.` };
-  },
   async pull() {
-    const r = await this.req(this.repoPath() + "/contents/" + DATA_PATH);
-    if (r.status === 404) return { docs: {}, sha: null };
+    const r = await this.req(this.repoPath() + "/contents/hourbox.json");
+    if (r.status === 404) throw { kind: "missing" };
     if (r.status === 401) throw { kind: "auth" };
     if (!r.ok) throw { kind: "other", status: r.status };
     const j = await r.json();
     let text = j.content ? b64dec(j.content) : "";
-    if (!text && j.sha) { // files over 1 MB come through the blob API
-      const br = await this.req(this.repoPath() + "/git/blobs/" + j.sha);
-      if (!br.ok) throw { kind: "other", status: br.status };
-      text = b64dec((await br.json()).content);
-    }
-    let docs = {}; try { docs = (JSON.parse(text || "{}").docs) || {}; } catch (e) {}
-    return { docs, sha: j.sha };
-  },
-  async push(docs, sha) {
-    const body = { message: "Update plans " + new Date().toISOString().slice(0, 16).replace("T", " "),
-      content: b64enc(JSON.stringify({ app: "hourbox", version: 1, updated: new Date().toISOString(), docs })) };
-    if (sha) body.sha = sha;
-    const r = await this.req(this.repoPath() + "/contents/" + DATA_PATH, { method: "PUT", body: JSON.stringify(body), headers: { "Content-Type": "application/json" } });
-    if (r.status === 409 || r.status === 422) return { conflict: true };
-    if (r.status === 401) throw { kind: "auth" };
-    if (r.status === 403 || r.status === 404) throw { kind: "write" };
-    if (!r.ok) throw { kind: "other", status: r.status };
-    const j = await r.json();
-    return { sha: j.content.sha };
+    if (!text && j.sha) { const br = await this.req(this.repoPath() + "/git/blobs/" + j.sha); if (!br.ok) throw { kind: "other" }; text = b64dec((await br.json()).content); }
+    return (JSON.parse(text || "{}").docs) || {};
   }
 };
 
 const Store = {
-  dirty: new Set(), inflight: false, timer: null, sha: null, pending: { size: 0 },
-  get busy() { return this.dirty.size > 0 || this.inflight; },
+  dirty: new Set(), timers: {}, unsub: null, slow: null,
+  get busy() { return this.dirty.size > 0; },
   async init() {
-    const cfg = lsGet(CFG_KEY); const cache = lsGet(LS_KEY);
-    if (cache && cache.docs) { S.docs = cache.docs; this.sha = cache.sha || null; } else if (cache && !cache.docs) { S.docs = cache; }
-    if (cfg && cfg.mode === "local") { S.mode = "local"; S.ready = true; setSync("local", "This device only"); setBanner("Sync is off, so these plans are saved on this device only. <a href=\"#\" data-act=\"settings\">Connect GitHub</a> to sync."); render(); return; }
-    if (!cfg || !cfg.token) { S.mode = "setup"; S.ready = true; setSync("local", "Not connected"); render(); return; }
-    GH.cfg = cfg; S.mode = "gh"; S.ready = true; render();
-    startSyncLoop();
-    await this.refresh(true);
+    const cfg = lsGet(CFG_KEY);
+    if (cfg && cfg.mode === "local") return this.startLocal();
+    setSync("saving", "Connecting…");
+    try { await loadFirebase(); }
+    catch (e) {
+      S.mode = "setup"; S.ready = true; S.fbError = e && e.message === "not-configured" ? "Hourbox isn’t connected to its database yet." : "Can’t load Hourbox’s sign-in. Check your connection and reload.";
+      setSync("error", "Offline"); render(); return;
+    }
+    FB.m.onAuthStateChanged(FB.auth, user => this.onUser(user));
+    FB.m.getRedirectResult(FB.auth).catch(e => { S.authErr = AUTH_ERR[e.code] || "Couldn’t log in with Google. Try again."; const m = $("#au-msg"); if (m) m.textContent = S.authErr; });
   },
-  cache() { lsSet(LS_KEY, { docs: S.docs, sha: this.sha }); },
-  async refresh(first) {
-    if (S.mode !== "gh" || this.busy) return;
-    if (first) setSync("saving", "Syncing…");
-    try {
-      const remote = await GH.pull();
-      if (this.busy) return; // you edited while we were fetching; your save will merge
-      const localOnly = first && !this.sha ? Object.keys(S.docs).filter(id => !(id in remote.docs)) : [];
-      if (remote.sha !== this.sha || first) {
-        S.docs = Object.assign({}, remote.docs, Object.fromEntries(localOnly.map(id => [id, S.docs[id]])));
-        this.sha = remote.sha; this.cache();
-        if (!modalOpen()) render();
-      }
-      if (localOnly.length) { localOnly.forEach(id => this.dirty.add(id)); this.flush(); }
-      else setSync("ok", "Synced");
-      setBanner("");
-    } catch (e) { this.fail(e); }
+  startLocal() {
+    S.mode = "local"; S.showSetup = false;
+    const cache = lsGet(LS_KEY); S.docs = (cache && cache.docs) || {};
+    S.ready = true; setSync("local", "This device only");
+    setBanner("You’re using Hourbox without an account, so plans are saved on this device only. <a href=\"#\" data-act=\"settings\">Log in</a> to sync.");
+    render();
+  },
+  onUser(user) {
+    if (this.unsub) { this.unsub(); this.unsub = null; }
+    FB.user = user;
+    if (!user) { if (S.mode === "local") return; S.docs = {}; S.mode = "setup"; S.showSetup = false; S.ready = true; setBanner(""); setSync("local", "Logged out"); render(); return; }
+    S.mode = "fb"; S.showSetup = false; S.ready = false; S.docs = {}; setBanner(""); render();
+    clearTimeout(this.slow);
+    this.slow = setTimeout(() => { if (!S.ready) { S.ready = true; render(); } setBanner("Can’t reach the server. You can keep working; changes are saved on this device and sync when you’re back online."); }, 10000);
+    let first = true;
+    this.unsub = FB.m.onSnapshot(userDocs(), { includeMetadataChanges: true }, snap => {
+      const next = {}; snap.forEach(d => { next[d.id] = d.data(); });
+      for (const id of this.dirty) if (S.docs[id]) next[id] = S.docs[id]; // your newest typing wins until it is written
+      S.docs = next; S.ready = true;
+      if (!snap.metadata.fromCache) { clearTimeout(this.slow); setBanner(""); }
+      if (!this.busy) setSync(snap.metadata.hasPendingWrites ? "saving" : snap.metadata.fromCache ? "offline" : "ok", snap.metadata.hasPendingWrites ? "Saving…" : snap.metadata.fromCache ? "Offline, saved here" : "Synced");
+      if (!snap.metadata.fromCache && first) { first = false; offerImport(snap.empty); }
+      if (!modalOpen()) render();
+    }, err => { clearTimeout(this.slow); S.ready = true; setSync("error", "Sync stopped"); setBanner("Sync stopped (" + esc(err.code || "error") + "). Reload the page to reconnect."); render(); });
   },
   save(id) {
-    this.dirty.add(id); this.cache();
-    if (S.mode !== "gh") { setSync("local", S.mode === "local" ? "This device only" : "Not connected"); this.dirty.clear(); return; }
-    setSync("saving", "Saving…");
-    clearTimeout(this.timer); this.timer = setTimeout(() => this.flush(), 1200);
+    if (S.mode === "local") { lsSet(LS_KEY, { docs: S.docs }); return; }
+    if (S.mode !== "fb") return;
+    this.dirty.add(id); setSync("saving", "Saving…");
+    clearTimeout(this.timers[id]); this.timers[id] = setTimeout(() => this.flush(id), 400);
   },
-  flushNow() { if (this.dirty.size && !this.inflight) { clearTimeout(this.timer); this.flush(); } },
-  async flush() {
-    if (this.inflight || !this.dirty.size || S.mode !== "gh") return;
-    this.inflight = true;
-    const mine = new Set(this.dirty); this.dirty.clear();
-    let merged = false;
-    try {
-      for (let attempt = 0; attempt < 4; attempt++) {
-        const res = await GH.push(S.docs, this.sha);
-        if (!res.conflict) { this.sha = res.sha; break; }
-        // Another device saved first: take theirs, then lay your changed days back on top.
-        const remote = await GH.pull();
-        const next = Object.assign({}, remote.docs);
-        for (const id of new Set([...mine, ...this.dirty])) if (S.docs[id]) next[id] = S.docs[id];
-        S.docs = next; this.sha = remote.sha; merged = true;
-        if (attempt === 3) throw { kind: "other" };
-      }
-      this.cache();
-      if (merged && !modalOpen()) render();
-      setSync("ok", "Synced"); setBanner("");
-    } catch (e) { mine.forEach(id => this.dirty.add(id)); this.fail(e); }
-    finally {
-      this.inflight = false;
-      if (this.dirty.size) { clearTimeout(this.timer); this.timer = setTimeout(() => this.flush(), 5000); }
-    }
+  flush(id) {
+    if (!this.dirty.has(id) || !FB.user) return;
+    this.dirty.delete(id);
+    // Firestore keeps the write on this device right away and sends it when it can.
+    FB.m.setDoc(FB.m.doc(userDocs(), id), S.docs[id]).catch(e => {
+      setSync("error", "Not saved");
+      toast(e && e.code === "permission-denied" ? "The server refused that change. Log out and in again." : "Couldn’t save that change. Try again in a moment.");
+    });
   },
-  fail(e) {
-    const k = e && e.kind;
-    if (k === "auth") { setSync("error", "Token expired"); setBanner("GitHub stopped accepting this device’s token. <a href=\"#\" data-act=\"settings\">Paste a new token</a>. Your changes are kept on this device until then."); }
-    else if (k === "write") { setSync("error", "Can’t save"); setBanner("The token can read but not write. Give it <b>Contents: Read and write</b> access, then <a href=\"#\" data-act=\"settings\">paste it again</a>."); }
-    else { setSync("offline", "Offline"); setBanner("Can’t reach GitHub right now. Your changes are saved on this device and will sync when the connection is back."); }
-  }
+  flushNow() { [...this.dirty].forEach(id => { clearTimeout(this.timers[id]); this.flush(id); }); }
 };
-window.addEventListener("beforeunload", e => { if (Store.busy && S.mode === "gh") { Store.flushNow(); e.preventDefault(); } });
+window.addEventListener("pagehide", () => Store.flushNow());
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") Store.flushNow(); });
 
-function tokenFormHTML(cfg) {
-  return `<form class="setup-form" data-form="setup">
-      <div class="field"><label for="su-owner">GitHub username</label><input type="text" id="su-owner" value="${esc(cfg.owner || "segaldev")}" autocapitalize="off" spellcheck="false"></div>
-      <div class="field"><label for="su-repo">Private data repo</label><input type="text" id="su-repo" value="${esc(cfg.repo || "hourbox-data")}" autocapitalize="off" spellcheck="false"></div>
-      <div class="field"><label for="su-token">Access token</label><input type="password" id="su-token" placeholder="github_pat_…" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
-      <p class="hint err" id="su-msg" role="status"></p>
-      <div class="setup-actions"><button class="btn ${cfg.token ? "" : "primary"}" type="submit" id="su-go">${cfg.token ? "Replace token" : "Connect"}</button>
-      ${cfg.token ? "" : `<button class="btn ghost" type="button" data-act="use-local" id="su-local">Use without sync for now</button>`}</div>
-    </form>`;
+function offerImport(cloudEmpty) {
+  const gh = lsGet(CFG_KEY);
+  if (cloudEmpty && gh && gh.token) setBanner(`Your plans from the GitHub version are still in <b>${esc(gh.repo)}</b>. <button class="btn primary" type="button" data-act="gh-import" id="gh-import-banner">Import them now</button>`);
 }
-const tokenSteps = `<ol class="steps">
-      <li><b>Check the data repo exists and is private.</b> It’s called <code>hourbox-data</code>. If it’s missing, <a href="https://github.com/new" target="_blank" rel="noopener">create it</a> and choose <i>Private</i>.</li>
-      <li><b>Create an access token</b> on <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">GitHub’s fine-grained token page</a>:
-        <ul><li>Repository access: <i>Only select repositories</i> → <code>hourbox-data</code></li>
-        <li>Permissions → Repository permissions → <i>Contents</i>: <b>Read and write</b></li>
-        <li>Pick an expiration you’re comfortable with, then <i>Generate token</i> and copy it.</li></ul></li>
-      <li><b>Paste it below.</b> Do this once on each device (Mac, phone). The token stays in that browser only.</li>
-    </ol>`;
+async function importFromGitHub(token) {
+  const old = lsGet(CFG_KEY) || {};
+  GH.cfg = { owner: old.owner || "segaldev", repo: old.repo || "hourbox-data", token: token || old.token };
+  if (!GH.cfg.token) { toast("Paste your GitHub token first."); return; }
+  setSync("saving", "Importing…");
+  let docs;
+  try { docs = await GH.pull(); }
+  catch (e) {
+    setSync("error", "Import failed");
+    toast(e.kind === "auth" ? "GitHub didn’t accept the token. It may have expired." : e.kind === "missing" ? "No plans were found in that repo." : "Can’t reach GitHub. Try again in a moment.");
+    return;
+  }
+  const existing = new Set(Object.keys(S.docs));
+  const ids = Object.keys(docs).filter(id => !existing.has(id)); // never overwrite anything already in your account
+  for (let i = 0; i < ids.length; i += 400) {
+    const batch = FB.m.writeBatch(FB.db);
+    ids.slice(i, i + 400).forEach(id => batch.set(FB.m.doc(userDocs(), id), docs[id]));
+    await batch.commit();
+  }
+  lsSet(CFG_KEY, null); lsSet(LS_KEY, null); GH.cfg = null; // the token is no longer needed on this device
+  setBanner("");
+  const days = ids.filter(id => id.startsWith("day-")).length, skipped = Object.keys(docs).length - ids.length;
+  toast(`Imported ${days} day${days === 1 ? "" : "s"}${ids.includes("parking") ? ", your parking lot" : ""}${ids.includes("routine") ? ", your routine" : ""}.${skipped ? ` Kept ${skipped} item${skipped === 1 ? "" : "s"} already in your account.` : ""}`);
+  if (S.showSetup) render();
+}
+
 const LENS = [15, 30, 45, 60, 90, 120, 180];
 const DAYN = ["M", "T", "W", "T", "F", "S", "S"], DAYFULL = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 function routineWarnings(items) {
@@ -600,41 +596,69 @@ function renderRoutine() {
     <div class="setup-actions"><button class="btn" type="button" data-act="rt-add" id="rt-add">+ Add routine item</button></div>
   </section>`;
 }
-function renderSetup() {
-  const cfg = lsGet(CFG_KEY) || {}; const connected = cfg.token && cfg.mode !== "local";
-  const routine = S.mode !== "setup" ? renderRoutine() : "";
-  if (connected) return routine + `<section class="pane setup">
-    <div class="pane-head"><h2>Sync</h2></div>
-    <p>This device is connected and syncing with your private repo <b>${esc(cfg.owner)}/${esc(cfg.repo)}</b>.</p>
-    <div class="setup-actions"><button class="btn ghost" type="button" data-act="disconnect" id="su-disc">Disconnect this device</button></div>
+const AUTH_ERR = {
+  "auth/unauthorized-domain": "This website isn’t allowed to sign in yet. In Firebase, add segaldev.github.io under Authentication → Settings → Authorized domains.",
+  "auth/operation-not-allowed": "Google sign-in isn’t turned on yet. In Firebase, enable Google under Authentication → Sign-in method.",
+  "auth/network-request-failed": "Can’t reach Google. Check your connection and try again.",
+  "auth/too-many-requests": "Too many attempts. Wait a few minutes and try again.",
+  "auth/user-disabled": "This account has been disabled.",
+};
+const GOOGLE_G = '<svg viewBox="0 0 48 48" width="18" height="18" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>';
+function renderAuth() {
+  const gh = lsGet(CFG_KEY);
+  if (S.fbError) return `<section class="pane setup"><div class="pane-head"><h2>Hourbox</h2></div><p>${esc(S.fbError)}</p>
+    <div class="setup-actions"><button class="btn ghost" type="button" data-act="use-local" id="su-local">Use without an account</button></div></section>`;
+  return `<section class="pane setup">
+    <div class="pane-head"><h2>Log in to Hourbox</h2></div>
+    <p>Use your Google account. Your plans are private to you and sync between your devices.</p>
+    ${gh && gh.token ? `<p class="hint">Moving from the GitHub version? After you log in, Hourbox will offer to import your plans.</p>` : ""}
+    <div class="setup-actions"><button class="btn google" type="button" data-act="google" id="au-google">${GOOGLE_G}<span>Continue with Google</span></button></div>
+    <p class="hint err" id="au-msg" role="status"></p>
     <hr class="sep">
-    <details><summary>Replace the access token</summary><p class="hint">Use this when your token expires.</p>${tokenFormHTML(cfg)}</details>
-  </section>`;
-  return routine + `<section class="pane setup">
-    <div class="pane-head"><h2>Connect your private data repo</h2></div>
-    <p>Hourbox keeps your plans in a <b>private</b> GitHub repository in your own account. Only you can read it. This page’s code is public, but your plans never are.</p>
-    ${tokenSteps}${tokenFormHTML(cfg)}
+    <p class="hint"><button class="linkbtn" type="button" data-act="use-local" id="su-local">Use without an account</button> to keep plans on this device only.</p>
   </section>`;
 }
-function startSyncLoop() {
-  if (Store._started) return; Store._started = true;
-  setInterval(() => Store.refresh(), 60000);
-  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") Store.refresh(); else Store.flushNow(); });
-  window.addEventListener("pagehide", () => Store.flushNow());
+function renderSetup() {
+  if (S.mode === "setup") return renderAuth();
+  const gh = lsGet(CFG_KEY);
+  const account = S.mode === "fb" ? `<section class="pane setup">
+    <div class="pane-head"><h2>Account</h2></div>
+    <p>Logged in as <b>${esc(FB.user && FB.user.email || "")}</b>. Your plans sync between your devices.</p>
+    <div class="setup-actions"><button class="btn ghost" type="button" data-act="logout" id="su-logout">Log out</button></div>
+    <hr class="sep">
+    <details ${gh && gh.token ? "open" : ""}><summary>Import from the GitHub version</summary>
+      <p class="hint">Copies your days, parking lot and routine from your private <code>hourbox-data</code> repo. Anything already in your account is kept.</p>
+      ${gh && gh.token ? `<div class="setup-actions"><button class="btn primary" type="button" data-act="gh-import" id="gh-import">Import from ${esc(gh.repo)}</button></div>`
+        : `<form class="setup-form" data-form="gh-import"><div class="field"><label for="gh-token">GitHub access token</label><input type="password" id="gh-token" placeholder="github_pat_…" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
+           <div class="setup-actions"><button class="btn" type="submit" id="gh-go">Import</button></div></form>`}
+    </details>
+  </section>` : `<section class="pane setup">
+    <div class="pane-head"><h2>Account</h2></div>
+    <p>You’re using Hourbox without an account, so plans stay on this device.</p>
+    <div class="setup-actions"><button class="btn primary" type="button" data-act="to-login" id="su-login">Log in or create an account</button></div>
+  </section>`;
+  return renderRoutine() + account;
 }
-async function connectSetup() {
-  const owner = $("#su-owner").value.trim(), repo = $("#su-repo").value.trim(), token = $("#su-token").value.trim();
-  const msg = $("#su-msg"), btn = $("#su-go"); if (!owner || !repo || !token) { msg.textContent = "Fill in all three fields."; return; }
-  const prev = lsGet(CFG_KEY);
-  btn.disabled = true; msg.textContent = "Checking the repository…";
-  GH.cfg = { owner, repo, token };
-  try { await GH.checkRepo(); }
-  catch (e) { btn.disabled = false; GH.cfg = prev && prev.token ? prev : null; msg.textContent = e.msg || "Can’t reach GitHub. Check your connection and try again."; return; }
-  lsSet(CFG_KEY, { owner, repo, token });
-  S.mode = "gh"; S.showSetup = false; setBanner(""); render(); startSyncLoop();
-  Store.sha = (lsGet(LS_KEY) || {}).sha || null;
-  await Store.refresh(true);
-  toast(prev && prev.token ? "Token replaced." : "Connected. Your plans now sync through " + repo + ".");
+async function googleSignIn() {
+  const msg = $("#au-msg"), btn = $("#au-google");
+  const provider = new FB.m.GoogleAuthProvider(); provider.setCustomParameters({ prompt: "select_account" });
+  btn.disabled = true; msg.textContent = "";
+  try { await FB.m.signInWithPopup(FB.auth, provider); toast("Logged in."); }
+  catch (e) {
+    btn.disabled = false;
+    if (e.code === "auth/popup-blocked" || e.code === "auth/operation-not-supported-in-this-environment") {
+      try { await FB.m.signInWithRedirect(FB.auth, provider); return; } catch (e2) { msg.textContent = AUTH_ERR[e2.code] || "Couldn’t open Google sign-in. Try again in Safari."; return; }
+    }
+    if (e.code === "auth/popup-closed-by-user" || e.code === "auth/cancelled-popup-request") return;
+    msg.textContent = AUTH_ERR[e.code] || "Couldn’t log in with Google. Try again.";
+  }
+}
+async function logout() {
+  Store.flushNow();
+  try { await FB.m.signOut(FB.auth); } catch (e) {}
+  // remove this device's offline copy of your plans
+  try { await FB.m.terminate(FB.db); await FB.m.clearIndexedDbPersistence(FB.db); } catch (e) {}
+  location.reload();
 }
 function setSync(s, text) { const el = $("#sync"); el.dataset.s = s; el.textContent = text; }
 function setBanner(html) { $("#banner").innerHTML = html ? `<div class="banner">${html}</div>` : ""; }
@@ -646,9 +670,9 @@ function render() {
   const a = document.activeElement; const inApp = a && a.id && $("#app").contains(a);
   let fid = inApp ? a.id : null, ss, se; try { ss = a.selectionStart; se = a.selectionEnd; } catch (e) {}
   renderHeader();
-  if (!S.ready) return;
+  if (!S.ready) { if (!$("#app .loading")) $("#app").innerHTML = `<div class="loading">Loading your planner…</div>`; return; }
   if (S.mode === "setup" || S.showSetup) {
-    const keep = {}; ["su-token"].forEach(id => { const el = document.getElementById(id); if (el) keep[id] = el.value; });
+    const keep = {}; ["gh-token"].forEach(id => { const el = document.getElementById(id); if (el) keep[id] = el.value; });
     $("#app").innerHTML = renderSetup(); $("#placebar").hidden = true;
     Object.entries(keep).forEach(([id, v]) => { const el = document.getElementById(id); if (el) el.value = v; });
     if (fid) document.getElementById(fid)?.focus();
@@ -929,8 +953,11 @@ document.addEventListener("click", e => {
     case "rt-day": mutate("routine", getRoutine(), r => { const it = r.items.find(x => x.id === t.dataset.id); const d0 = +t.dataset.d; const days = new Set(it.days || [0,1,2,3,4,5,6]); days.has(d0) ? days.delete(d0) : days.add(d0); it.days = [...days].sort(); }); break;
     case "settings": e.preventDefault(); S.showSetup = true; S.placing = null; render(); window.scrollTo(0, 0); break;
     case "setup-back": S.showSetup = false; render(); break;
-    case "use-local": lsSet(CFG_KEY, { mode: "local" }); S.mode = "local"; S.showSetup = false; setSync("local", "This device only"); setBanner("Sync is off, so these plans are saved on this device only. <a href=\"#\" data-act=\"settings\">Connect GitHub</a> to sync."); render(); break;
-    case "disconnect": lsSet(CFG_KEY, null); lsSet(LS_KEY, null); S.docs = {}; Store.sha = null; GH.cfg = null; Store.dirty.clear(); S.mode = "setup"; S.showSetup = false; setSync("local", "Not connected"); render(); toast("This device is disconnected and its copy of your plans was removed."); break;
+    case "use-local": lsSet(CFG_KEY, Object.assign({}, lsGet(CFG_KEY), { mode: "local" })); Store.startLocal(); break;
+    case "to-login": { const c = lsGet(CFG_KEY) || {}; delete c.mode; lsSet(CFG_KEY, Object.keys(c).length ? c : null); location.reload(); break; }
+    case "google": googleSignIn(); break;
+    case "logout": logout(); break;
+    case "gh-import": importFromGitHub(); break;
     case "reopen": mutateDay(k, d => { d.finished = false; }); toast("Day reopened. Finish it again when you’re done."); break;
   }
 });
@@ -940,7 +967,7 @@ document.addEventListener("keydown", e => {
 });
 document.addEventListener("submit", e => {
   const f = e.target.closest("[data-form]"); if (!f) return; e.preventDefault();
-  if (f.dataset.form === "setup") { connectSetup(); return; }
+  if (f.dataset.form === "gh-import") { importFromGitHub($("#gh-token").value.trim()); return; }
   const inp = f.querySelector("input"); const text = inp.value.trim(); if (!text) return;
   if (f.dataset.form === "dump") mutateDay(S.date, d => { d.dump.push({ id: rid(), text }); });
   else mutatePark(p => { p.items.push({ id: rid(), text }); });
