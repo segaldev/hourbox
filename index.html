@@ -288,7 +288,7 @@ const ICON = {
 
 // ---------- state ----------
 const S = { view: "day", date: todayKey(), docs: {}, ready: false, mode: "connecting", placing: null };
-const DEF_START = 7, DEF_END = 22;
+const DEF_START = 6, DEF_END = 22;
 
 function blankDay(key) {
   return { kind: "day", date: key, month: key.slice(0, 7), start: DEF_START, end: DEF_END, boxes: {},
@@ -300,6 +300,7 @@ function normDay(d, key) {
   if (!Array.isArray(o.prio)) o.prio = b.prio;
   while (o.prio.length < 3) o.prio.push({ text: "", done: false });
   o.boxes = o.boxes || {}; o.dump = o.dump || [];
+  o.start = Math.min(o.start, DEF_START);
   return o;
 }
 const dayId = k => "day-" + k;
