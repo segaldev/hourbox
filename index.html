@@ -247,6 +247,20 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 .field input[type=password] { border: 1px solid var(--line); background: var(--paper); border-radius: 9px; padding: 8px 10px; width: 100%; font-family: var(--f-mono); }
 .field input[type=password]:focus { outline: none; border-color: var(--accent); background: var(--surface); }
 .setup-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.setup.routine { max-width: 860px; margin-bottom: 16px; }
+.rt-list { display: grid; gap: 8px; margin: 6px 0 10px; }
+.rt-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); }
+.rt-row select, .rt-row input[type=text] { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 6px 8px; }
+.rt-row input[type=text] { flex: 1 1 180px; min-width: 0; }
+.rt-row input[type=text]:focus, .rt-row select:focus { outline: none; border-color: var(--accent); }
+.rt-days { display: inline-flex; gap: 3px; }
+.dchip { width: 26px; height: 26px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface); font-size: 12px; font-weight: 600; color: var(--muted); padding: 0; }
+.dchip[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.flexchk { display: inline-flex; align-items: center; gap: 6px; font-size: 13.5px; cursor: pointer; }
+.box.filled.flex { border: 1.5px dashed var(--muted); background: transparent; }
+.box.filled.flex:hover { border-color: var(--ink); }
+.flexmark { flex: none; font-size: 11px; font-family: var(--f-mono); color: var(--muted); }
+.headbtns { display: flex; gap: 8px; flex-wrap: wrap; }
 a.btn { text-decoration: none; display: inline-flex; align-items: center; }
 .setup .sep { border: 0; border-top: 1px solid var(--line); margin: 14px 0 10px; width: 100%; }
 .setup details summary { cursor: pointer; font-weight: 600; padding: 4px 0; }
@@ -274,7 +288,7 @@ a.btn { text-decoration: none; display: inline-flex; align-items: center; }
       <button class="btn ghost" id="nav-today" data-act="today">Today</button>
     </div>
     <span class="sync" id="sync" data-s="saving">Connecting…</span>
-    <button class="iconbtn" id="settings" data-act="settings" aria-label="Account and sync" title="Account and sync"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg></button>
+    <button class="iconbtn" id="settings" data-act="settings" aria-label="Settings" title="Settings: daily routine and sync"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg></button>
   </header>
   <div id="banner"></div>
   <main id="app"><div class="loading">Loading your planner…</div></main>
@@ -338,7 +352,63 @@ function normDay(d, key) {
   return o;
 }
 const dayId = k => "day-" + k;
-const getDay = k => normDay(S.docs[dayId(k)], k);
+// Daily routine: a template of boxes that every new day (today or later) starts with.
+// Days are Mon=0 … Sun=6. Flexible items move aside to the nearest free slot instead of being bumped.
+const DEFAULT_ROUTINE = [
+  { id: "r-ready", start: 360, len: 60, text: "Get ready", tag: "personal", flex: false, days: [0, 1, 2, 3, 4, 5, 6] },
+  { id: "r-house", start: 420, len: 60, text: "Housework / get kids ready", tag: "personal", flex: false, days: [0, 1, 2, 3, 4, 5, 6] },
+  { id: "r-walk", start: 480, len: 30, text: "Walk", tag: "personal", flex: true, days: [0, 1, 2, 3, 4, 5, 6] },
+];
+const getRoutine = () => Object.assign({ kind: "routine", items: clone(DEFAULT_ROUTINE) }, S.docs.routine || {});
+const dowOf = k => (parseKey(k).getDay() + 6) % 7;
+const routineFor = k => getRoutine().items.filter(it => it.text.trim() && (!it.days || it.days.includes(dowOf(k)))).sort((a, b) => a.start - b.start);
+function resplit(d, h, n) { // change an hour's box length, keeping boxes where they start; returns boxes that no longer fit
+  const bumped = [];
+  const old = Object.keys(d.boxes).filter(key => hourOfKey(key) === h).sort((a, b) => minOfKey(a) - minOfKey(b)).map(key => [key, d.boxes[key]]);
+  old.forEach(([key]) => delete d.boxes[key]);
+  d.splits = d.splits || {}; if (n === 1) delete d.splits[h]; else d.splits[h] = n;
+  const ks = slotKeys(d, h);
+  old.forEach(([key, b]) => {
+    let i = Math.floor((minOfKey(key) - h * 60) / (60 / n));
+    while (i < ks.length && d.boxes[ks[i]]) i++;
+    if (i < ks.length) d.boxes[ks[i]] = b; else bumped.push(b);
+  });
+  return bumped;
+}
+function slotsFor(d, start, len) { // keys covering [start, start+len) once hours are split finely enough, or null if any is taken
+  const need = start % 60 === 0 && len % 60 === 0 ? 1 : start % 30 === 0 && len % 30 === 0 ? 2 : 4;
+  const h0 = Math.floor(start / 60), h1 = Math.floor((start + len - 1) / 60);
+  if (start < 0 || h1 > 23) return null;
+  // only split hours that are still empty, so nothing you planned ever gets shorter
+  for (let h = h0; h <= h1; h++) if (splitOf(d, h) < need && hourHasBox(d, h)) return null;
+  const trial = clone(d); for (let h = h0; h <= h1; h++) if (splitOf(trial, h) < need) resplit(trial, h, need);
+  const keys = []; for (let h = h0; h <= h1; h++) slotKeys(trial, h).forEach(key => { const m = minOfKey(key); if (m >= start && m < start + len) keys.push(key); });
+  return keys.every(key => !trial.boxes[key]) ? { keys, need, h0, h1 } : null;
+}
+function applyRoutine(d, k) { // fills empty slots with routine items not already on the day; returns {added, moved, skipped}
+  const added = [], moved = [], skipped = [];
+  for (const it of routineFor(k)) {
+    if (Object.values(d.boxes).some(b => b.rt === it.id)) continue;
+    let start = it.start, fit = slotsFor(d, start, it.len);
+    if (!fit && it.flex) { // flexible: nearest free time, later first, within 6 hours
+      for (let off = 15; off <= 360 && !fit; off += 15) for (const c of [it.start + off, it.start - off]) { if (!fit && (fit = slotsFor(d, c, it.len))) start = c; }
+    }
+    if (!fit) { skipped.push(it.text); continue; }
+    for (let h = fit.h0; h <= fit.h1; h++) if (splitOf(d, h) < fit.need) resplit(d, h, fit.need);
+    fit.keys.forEach(key => { d.boxes[key] = { text: it.text.trim(), tag: it.tag || "", status: "planned", rt: it.id, flex: !!it.flex }; });
+    d.start = Math.min(d.start, fit.h0); d.end = Math.max(d.end, fit.h1 + 1);
+    (start === it.start ? added : moved).push(start === it.start ? it.text : `${it.text} (at ${timeLabel(start)})`);
+  }
+  d.rtApplied = true;
+  return { added: added.concat(moved), skipped };
+}
+const getDay = k => {
+  const saved = S.docs[dayId(k)];
+  if (saved) return normDay(saved, k);
+  const d = normDay(null, k);
+  if (k >= todayKey()) applyRoutine(d, k); // a new day starts from your routine (nothing is saved until you change it)
+  return d;
+};
 const hasDay = k => !!S.docs[dayId(k)];
 const getPark = () => Object.assign({ kind: "parking", items: [] }, S.docs.parking || {});
 const getMonth = m => Object.assign({ kind: "month", month: m, goals: ["", "", "", "", ""] }, S.docs["month-" + m] || {});
@@ -495,16 +565,51 @@ const tokenSteps = `<ol class="steps">
         <li>Pick an expiration you’re comfortable with, then <i>Generate token</i> and copy it.</li></ul></li>
       <li><b>Paste it below.</b> Do this once on each device (Mac, phone). The token stays in that browser only.</li>
     </ol>`;
+const LENS = [15, 30, 45, 60, 90, 120, 180];
+const DAYN = ["M", "T", "W", "T", "F", "S", "S"], DAYFULL = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+function routineWarnings(items) {
+  const w = [];
+  for (let i = 0; i < items.length; i++) for (let j = i + 1; j < items.length; j++) {
+    const a = items[i], b = items[j]; if (!a.text.trim() || !b.text.trim()) continue;
+    const days = (a.days || [0,1,2,3,4,5,6]).filter(x => (b.days || [0,1,2,3,4,5,6]).includes(x));
+    if (days.length && a.start < b.start + b.len && b.start < a.start + a.len) w.push(`“${a.text}” and “${b.text}” overlap. The later one won’t be added on those days.`);
+  }
+  return w;
+}
+function renderRoutine() {
+  const items = getRoutine().items.slice().sort((a, b) => a.start - b.start);
+  const timeOpts = v => Array.from({ length: 96 }, (_, i) => i * 15).map(m => `<option value="${m}" ${m === v ? "selected" : ""}>${timeLabel(m)}</option>`).join("");
+  const lenOpts = v => LENS.map(m => `<option value="${m}" ${m === v ? "selected" : ""}>${fmtDur(m)}</option>`).join("");
+  const tagOpts = v => TAGS.map(([t, n]) => `<option value="${t}" ${t === (v || "") ? "selected" : ""}>${t ? n : "No tag"}</option>`).join("");
+  const rows = items.map(it => `<div class="rt-row">
+      <select id="rt-${it.id}-start" data-rt="start" data-id="${it.id}" aria-label="Start time">${timeOpts(it.start)}</select>
+      <select id="rt-${it.id}-len" data-rt="len" data-id="${it.id}" aria-label="Length">${lenOpts(it.len)}</select>
+      <input type="text" id="rt-${it.id}-text" data-rt="text" data-id="${it.id}" value="${esc(it.text)}" placeholder="What happens" maxlength="80" aria-label="Activity">
+      <select id="rt-${it.id}-tag" data-rt="tag" data-id="${it.id}" aria-label="Tag">${tagOpts(it.tag)}</select>
+      <label class="flexchk" for="rt-${it.id}-flex"><input type="checkbox" class="check" id="rt-${it.id}-flex" data-rt="flex" data-id="${it.id}" ${it.flex ? "checked" : ""}> Flexible</label>
+      <div class="rt-days" role="group" aria-label="Days">${DAYN.map((n, i) => `<button type="button" class="dchip" id="rt-${it.id}-d${i}" data-act="rt-day" data-id="${it.id}" data-d="${i}" aria-pressed="${(it.days || [0,1,2,3,4,5,6]).includes(i)}" title="${DAYFULL[i]}">${n}</button>`).join("")}</div>
+      <button type="button" class="mini" id="rt-${it.id}-del" data-act="rt-del" data-id="${it.id}" title="Remove from routine" aria-label="Remove from routine">${ICON.x}</button>
+    </div>`).join("");
+  const warn = routineWarnings(items);
+  return `<section class="pane setup routine">
+    <div class="pane-head"><h2>Daily routine</h2><button class="btn primary" type="button" data-act="setup-back" id="rt-back">Back to planner</button></div>
+    <p>Every new day starts with these boxes. <b>Flexible</b> ones (dashed outline) move to the nearest free time when you drop something on them. Changes apply to days you haven’t touched yet. For a day that already exists, use <i>Add routine</i> on that day.</p>
+    <div class="rt-list">${rows || `<p class="empty-note">No routine yet.</p>`}</div>
+    ${warn.length ? `<p class="hint err">${warn.map(esc).join("<br>")}</p>` : ""}
+    <div class="setup-actions"><button class="btn" type="button" data-act="rt-add" id="rt-add">+ Add routine item</button></div>
+  </section>`;
+}
 function renderSetup() {
   const cfg = lsGet(CFG_KEY) || {}; const connected = cfg.token && cfg.mode !== "local";
-  if (connected) return `<section class="pane setup">
-    <div class="pane-head"><h2>Account</h2></div>
+  const routine = S.mode !== "setup" ? renderRoutine() : "";
+  if (connected) return routine + `<section class="pane setup">
+    <div class="pane-head"><h2>Sync</h2></div>
     <p>This device is connected and syncing with your private repo <b>${esc(cfg.owner)}/${esc(cfg.repo)}</b>.</p>
-    <div class="setup-actions"><button class="btn primary" type="button" data-act="setup-back" id="su-back">Back to planner</button><button class="btn ghost" type="button" data-act="disconnect" id="su-disc">Disconnect this device</button></div>
+    <div class="setup-actions"><button class="btn ghost" type="button" data-act="disconnect" id="su-disc">Disconnect this device</button></div>
     <hr class="sep">
     <details><summary>Replace the access token</summary><p class="hint">Use this when your token expires.</p>${tokenFormHTML(cfg)}</details>
   </section>`;
-  return `<section class="pane setup">
+  return routine + `<section class="pane setup">
     <div class="pane-head"><h2>Connect your private data repo</h2></div>
     <p>Hourbox keeps your plans in a <b>private</b> GitHub repository in your own account. Only you can read it. This page’s code is public, but your plans never are.</p>
     ${tokenSteps}${tokenFormHTML(cfg)}
@@ -624,7 +729,8 @@ function renderDay() {
       <ul class="items">${park}</ul></section>
     <section class="a-grid ${ro ? "readonly" : ""}">
       <div class="gridhead"><div><h2>${esc(dl)}</h2><div class="meta">${sm.plannedMin ? fmtDur(sm.plannedMin) : "0h"} of ${end - start}h boxed${sm.doneMin ? ` · ${fmtDur(sm.doneMin)} done` : ""}${ro ? " · Finished" : ""}</div></div>
-        ${ro ? `<button class="btn" id="reopen" data-act="reopen">Reopen day</button>` : `<button class="btn primary" id="finish" data-act="finish">Finish day</button>`}</div>
+        <div class="headbtns">${!ro && !d.rtApplied && routineFor(k).some(it => !Object.values(d.boxes).some(b => b.rt === it.id)) ? `<button class="btn" id="add-routine" data-act="add-routine">Add routine</button>` : ""}
+        ${ro ? `<button class="btn" id="reopen" data-act="reopen">Reopen day</button>` : `<button class="btn primary" id="finish" data-act="finish">Finish day</button>`}</div></div>
       ${summary}${topExt}<div class="hours" id="hours">${hours}</div>${botExt}
     </section></div>`;
 }
@@ -652,10 +758,11 @@ function slotBox(d, key, ro, n, nowMin) {
   let inner;
   if (b) {
     const st = b.status || "planned";
-    inner = `<div class="box filled st-${st}${now}" role="button" tabindex="0" id="box-${id}" data-act="box" data-h="${key}" ${ro ? "" : `draggable="true" data-drag='${esc(JSON.stringify({ from: "box", h: key }))}'`}>
+    inner = `<div class="box filled st-${st}${now}${b.flex ? " flex" : ""}" role="button" tabindex="0" id="box-${id}" data-act="box" data-h="${key}" ${ro ? "" : `draggable="true" data-drag='${esc(JSON.stringify({ from: "box", h: key }))}'`}>
       ${sub}<button class="stbtn ${st}" id="st-${id}" data-act="cycle" data-h="${key}" title="Status: ${st}. Click to change." aria-label="Status ${st}">${st === "done" ? ICON.check : st === "skipped" ? ICON.x : ""}</button>
       <span class="btxt">${esc(b.text)}</span>
       ${b.pi != null ? `<span class="prio-flag" title="Top priority">P${b.pi + 1}</span>` : ""}
+      ${b.flex ? `<span class="flexmark" title="Flexible: drop something here and this moves to the nearest free time">flexible</span>` : ""}
       ${b.tag ? `<span class="tag tg-${b.tag}">${esc(TAGNAME[b.tag] || b.tag)}</span>` : ""}
     </div>`;
   } else {
@@ -667,18 +774,21 @@ function setSplit(h) {
   const k = S.date, d0 = getDay(k), cur = splitOf(d0, h), n = cur === 1 ? 2 : cur === 2 ? 4 : 1;
   let bumped = [];
   mutateDay(k, d => {
-    const old = Object.keys(d.boxes).filter(key => hourOfKey(key) === h).sort((a, b) => minOfKey(a) - minOfKey(b)).map(key => [key, d.boxes[key]]);
-    old.forEach(([key]) => delete d.boxes[key]);
-    d.splits = d.splits || {}; if (n === 1) delete d.splits[h]; else d.splits[h] = n;
-    const ks = slotKeys(d, h);
-    old.forEach(([key, b]) => {
-      let i = Math.floor((minOfKey(key) - h * 60) / (60 / n));
-      while (i < ks.length && d.boxes[ks[i]]) i++;
-      if (i < ks.length) d.boxes[ks[i]] = b;
-      else { bumped.push(b.text); if (b.pi == null && !d.dump.some(x => x.text === b.text)) d.dump.push({ id: rid(), text: b.text }); }
-    });
+    bumped = resplit(d, h, n).map(b => b.text);
+    bumped.forEach(text => { if (!d.dump.some(x => x.text === text)) d.dump.push({ id: rid(), text }); });
   });
   if (bumped.length) toast(`Only one box fits now. “${bumped[0]}”${bumped.length > 1 ? ` and ${bumped.length - 1} more` : ""} went back to the brain dump.`);
+}
+function nearestFree(d, key) { // closest empty slot to `key` (ties go later), within the visible hours
+  const filledH = Object.keys(d.boxes).map(hourOfKey);
+  const s0 = Math.min(d.start, ...filledH), e0 = Math.max(d.end, ...filledH.map(n => n + 1)), t = minOfKey(key);
+  let best = null, bd = Infinity;
+  for (let h = s0; h < e0; h++) for (const k2 of slotKeys(d, h)) {
+    if (k2 === String(key) || d.boxes[k2]) continue;
+    const m = minOfKey(k2), dist = m >= t ? m - t : t - m + 0.5;
+    if (dist < bd) { bd = dist; best = k2; }
+  }
+  return best;
 }
 function placeNowLine() {
   if (S.view !== "day" || S.date !== todayKey()) return;
@@ -728,7 +838,7 @@ function place(src, h) {
   const k = S.date; const d0 = getDay(k);
   if (d0.finished) { toast("This day is finished. Reopen it to make changes."); return; }
   if (src.from === "box" && String(src.h) === String(h)) { S.placing = null; render(); return; }
-  let parkItem = null; let bumped = null;
+  let parkItem = null; let bumped = null; let movedAside = null;
   if (src.from === "park") { parkItem = getPark().items.find(x => x.id === src.id); if (!parkItem) return; }
   mutateDay(k, d => {
     const existing = d.boxes[h];
@@ -737,12 +847,17 @@ function place(src, h) {
     else if (src.from === "dump") { const it = d.dump.find(x => x.id === src.id); if (!it) return; box = { text: it.text, status: "planned" }; d.dump = d.dump.filter(x => x.id !== src.id); }
     else if (src.from === "park") box = { text: parkItem.text, status: "planned" };
     else if (src.from === "box") { box = d.boxes[src.h]; delete d.boxes[src.h]; if (existing) d.boxes[src.h] = existing; }
-    if (existing && src.from !== "box") { bumped = existing.text; if (existing.pi == null) d.dump.push({ id: rid(), text: existing.text }); }
+    if (existing && src.from !== "box") {
+      const fk = existing.flex ? nearestFree(d, h) : null;
+      if (fk) { d.boxes[fk] = existing; movedAside = [existing.text, fk]; }
+      else { bumped = existing.text; if (existing.pi == null) d.dump.push({ id: rid(), text: existing.text }); }
+    }
     d.boxes[h] = box;
   }, { silent: true });
   if (parkItem) mutatePark(p => { p.items = p.items.filter(x => x.id !== src.id); }, { silent: true });
   S.placing = null; render();
   if (src.from === "box" && getDay(k).boxes[src.h]) toast("Swapped the two boxes.");
+  else if (movedAside) toast(`“${movedAside[0]}” moved to ${timeLabel(minOfKey(movedAside[1]))}.`);
   else if (bumped) toast(`“${bumped}” went back to the brain dump.`);
 }
 function cycleStatus(h) {
@@ -801,6 +916,13 @@ document.addEventListener("click", e => {
         if (t.dataset.w === "down-hide") d.end = en - 1;
       }); break; }
     case "finish": openFinish(); break;
+    case "add-routine": {
+      let res; mutateDay(k, d => { res = applyRoutine(d, k); });
+      toast(res.added.length ? `Added ${res.added.join(", ")}.${res.skipped.length ? ` Skipped ${res.skipped.join(", ")} (time already taken).` : ""}` : `Nothing added. ${res.skipped.join(", ")} overlap boxes you already have.`);
+      break; }
+    case "rt-add": mutate("routine", getRoutine(), r => { const last = r.items.reduce((m, it) => Math.max(m, it.start + it.len), 360); r.items.push({ id: "r-" + rid(), start: Math.min(last, 1425), len: 60, text: "", tag: "", flex: false, days: [0, 1, 2, 3, 4, 5, 6] }); }); break;
+    case "rt-del": mutate("routine", getRoutine(), r => { r.items = r.items.filter(it => it.id !== t.dataset.id); }); break;
+    case "rt-day": mutate("routine", getRoutine(), r => { const it = r.items.find(x => x.id === t.dataset.id); const d0 = +t.dataset.d; const days = new Set(it.days || [0,1,2,3,4,5,6]); days.has(d0) ? days.delete(d0) : days.add(d0); it.days = [...days].sort(); }); break;
     case "settings": e.preventDefault(); S.showSetup = true; S.placing = null; render(); window.scrollTo(0, 0); break;
     case "setup-back": S.showSetup = false; render(); break;
     case "use-local": lsSet(CFG_KEY, { mode: "local" }); S.mode = "local"; S.showSetup = false; setSync("local", "This device only"); setBanner("Sync is off, so these plans are saved on this device only. <a href=\"#\" data-act=\"settings\">Connect GitHub</a> to sync."); render(); break;
@@ -820,8 +942,14 @@ document.addEventListener("submit", e => {
   else mutatePark(p => { p.items.push({ id: rid(), text }); });
   const el = document.getElementById(inp.id); if (el) { el.value = ""; el.focus(); }
 });
+document.addEventListener("change", e => {
+  const t = e.target; if (!t.dataset.rt || t.dataset.rt === "text") return;
+  mutate("routine", getRoutine(), r => { const it = r.items.find(x => x.id === t.dataset.id); if (!it) return;
+    if (t.dataset.rt === "flex") it.flex = t.checked; else if (t.dataset.rt === "tag") it.tag = t.value; else it[t.dataset.rt] = +t.value; });
+});
 document.addEventListener("input", e => {
   const t = e.target;
+  if (t.dataset.rt === "text") { mutate("routine", getRoutine(), r => { const it = r.items.find(x => x.id === t.dataset.id); if (it) it.text = t.value; }, { silent: true }); return; }
   if (t.dataset.input === "prio") {
     mutateDay(S.date, d => { d.prio[+t.dataset.i].text = t.value; Object.values(d.boxes).forEach(b => { if (b.pi === +t.dataset.i) b.text = t.value.trim() || b.text; }); }, { silent: true });
     clearTimeout(t._r); t._r = setTimeout(render, 700);
@@ -870,19 +998,20 @@ function openBoxEditor(h) {
     <div class="body">
       <div class="field"><label for="be-text">What will you do?</label><input type="text" id="be-text" value="${esc(b.text)}" maxlength="140" placeholder="One focused activity"></div>
       <div class="field"><span class="lbl">Tag</span><div class="chips" id="be-tags">${tagChips()}</div></div>
+      <label class="flexchk" for="be-flex"><input type="checkbox" class="check" id="be-flex" ${b.flex ? "checked" : ""}> Flexible: if I drop something here, move this to the nearest free time</label>
       ${isNew ? "" : `<div class="field"><span class="lbl">Status</span><div class="chips" id="be-st">${stChips()}</div></div>`}
     </div>
     <footer>
       ${isNew ? "" : `<div class="left">
         <button class="btn ghost" data-m="next" id="be-next" ${!nk || d.boxes[nk] ? "disabled" : ""} title="${nk && d.boxes[nk] ? "The next box is already booked" : ""}">${nk ? `Continue into ${timeLabel(minOfKey(nk))}` : "Continue into next box"}</button>
         <button class="btn ghost" data-m="move" id="be-move">Move…</button>
-        <button class="btn ghost" data-m="unbox" id="be-unbox">Back to brain dump</button>
+        <button class="btn ghost" data-m="unbox" id="be-unbox">${b.rt ? "Remove for today" : "Back to brain dump"}</button>
         <button class="btn ghost" data-m="clear" id="be-clear">Delete</button></div>`}
       <button class="btn" data-m="cancel" id="be-cancel">Cancel</button>
       <button class="btn primary" data-m="save" id="be-save">Save</button>
     </footer>`, (btn) => {
       const m = btn.dataset.m;
-      b.text = $("#be-text").value;
+      b.text = $("#be-text").value; b.flex = $("#be-flex").checked;
       if (m === "tag") { b.tag = btn.dataset.v; $("#be-tags").innerHTML = tagChips(); }
       if (m === "st") { b.status = btn.dataset.v; $("#be-st").innerHTML = stChips(); }
       if (m === "cancel") closeModal();
@@ -897,7 +1026,7 @@ function openBoxEditor(h) {
         closeModal(); toast(`Continued into ${timeLabel(minOfKey(nk))}.`);
       }
       if (m === "move") { $("#modal-root").innerHTML = ""; S.placing = { from: "box", h, text: d.boxes[h].text }; render(); }
-      if (m === "unbox") { mutateDay(k, dd => { const x = dd.boxes[h]; delete dd.boxes[h]; if (x.pi == null) dd.dump.push({ id: rid(), text: x.text }); }, { silent: true }); closeModal(); }
+      if (m === "unbox") { mutateDay(k, dd => { const x = dd.boxes[h]; delete dd.boxes[h]; if (x.pi == null && !x.rt) dd.dump.push({ id: rid(), text: x.text }); }, { silent: true }); closeModal(); }
       if (m === "clear") { mutateDay(k, dd => { delete dd.boxes[h]; }, { silent: true }); closeModal(); }
     });
   const inp = $("#be-text"); inp.focus(); inp.select();

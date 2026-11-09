@@ -4,6 +4,10 @@ A simple time-boxing planner: top 3 priorities, brain dump, parking lot, a daily
 
 **Live app:** https://segaldev.github.io/hourbox/
 
+## Daily routine
+
+Open **Settings** (the sliders button) to set up boxes every new day starts with, such as "6:00 Get ready". Each item has a start time, length, tag, weekdays, and can be marked **Flexible**. Flexible items have a dashed outline. When you drop something on one, it moves to the nearest free time instead of being sent to the brain dump. Days that already exist get an **Add routine** button.
+
 ## Where your data lives
 
 This repository holds only the app's code and is public. Your plans are **not** stored here.
