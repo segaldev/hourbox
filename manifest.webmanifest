@@ -4,7 +4,7 @@
   "description": "A 1-hour time-boxing planner.",
   "start_url": "/hourbox/",
   "display": "standalone",
-  "background_color": "#F4ECD8",
+  "background_color": "#F5CC3C",
   "theme_color": "#3A2A1E",
   "icons": [
     {
