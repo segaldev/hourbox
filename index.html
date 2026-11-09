@@ -286,6 +286,7 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 .linkbtn { border: 0; background: none; padding: 0; color: var(--accent); text-decoration: underline; font: inherit; }
 .banner .btn { margin-left: 8px; padding: 3px 10px; }
 .setup.routine { max-width: 860px; margin-bottom: 16px; }
+.pane.setup + .pane.setup { margin-top: 16px; }
 .rt-list { display: grid; gap: 8px; margin: 6px 0 10px; }
 .rt-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px; border: 1px solid var(--line); border-radius: 3px; background: var(--paper); }
 .rt-row select, .rt-row input[type=text] { border: 1px solid var(--line); background: var(--surface); border-radius: 3px; padding: 6px 8px; }
@@ -312,6 +313,7 @@ a.btn { text-decoration: none; display: inline-flex; align-items: center; }
 
 </head>
 <body>
+<script>try { var t = localStorage.getItem("hourbox-appearance"); if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t); } catch (e) {}</script>
 <div class="wrap">
   <header class="top">
     <div class="brand"><span class="brand-mark" aria-hidden="true"></span>Hourbox</div>
@@ -613,6 +615,22 @@ function renderAuth() {
       <button class="linkbtn" type="button" data-act="use-local" id="su-local">Use without an account</button> to keep them on this device only.</p>
   </section>`;
 }
+function getAppearance() { try { const t = localStorage.getItem("hourbox-appearance"); return t === "light" || t === "dark" ? t : "auto"; } catch (e) { return "auto"; } }
+function setAppearance(t) {
+  try { t === "auto" ? localStorage.removeItem("hourbox-appearance") : localStorage.setItem("hourbox-appearance", t); } catch (e) {}
+  if (t === "auto") document.documentElement.removeAttribute("data-theme"); else document.documentElement.setAttribute("data-theme", t);
+  const m = { light: "#EEECE6", dark: "#151513" };
+  document.querySelectorAll('meta[name="theme-color"]').forEach(el => { if (t === "auto") el.setAttribute("content", /dark/.test(el.media) ? m.dark : m.light); else el.setAttribute("content", m[t]); });
+}
+function renderAppearance() {
+  const cur = getAppearance();
+  const opt = (v, label) => `<button type="button" class="chip" id="ap-${v}" data-act="appearance" data-v="${v}" aria-pressed="${cur === v}">${label}</button>`;
+  return `<section class="pane setup">
+    <div class="pane-head"><h2>Appearance</h2></div>
+    <div class="chips">${opt("light", "Light")}${opt("dark", "Dark")}${opt("auto", "Auto (match this device)")}</div>
+    <p class="hint">Saved on this device only, so your phone and Mac can differ.</p>
+  </section>`;
+}
 function renderSetup() {
   if (S.mode === "setup") return renderAuth();
   const account = S.mode === "fb" ? `<section class="pane setup">
@@ -624,7 +642,7 @@ function renderSetup() {
     <p>You’re using Hourbox without an account, so plans stay on this device.</p>
     <div class="setup-actions"><button class="btn primary" type="button" data-act="to-login" id="su-login">Log in or create an account</button></div>
   </section>`;
-  return renderRoutine() + account;
+  return renderRoutine() + renderAppearance() + account;
 }
 async function googleSignIn() {
   const msg = $("#au-msg"), btn = $("#au-google");
@@ -946,6 +964,7 @@ document.addEventListener("click", e => {
     case "to-login": { const c = lsGet(CFG_KEY) || {}; delete c.mode; lsSet(CFG_KEY, Object.keys(c).length ? c : null); location.reload(); break; }
     case "google": googleSignIn(); break;
     case "logout": logout(); break;
+    case "appearance": setAppearance(t.dataset.v); render(); break;
     case "reopen": mutateDay(k, d => { d.finished = false; }); toast("Day reopened. Finish it again when you’re done."); break;
   }
 });
@@ -1123,6 +1142,7 @@ setInterval(() => {
   }
 }, 60000);
 
+setAppearance(getAppearance());
 renderHeader();
 Store.init();
 })();
