@@ -123,6 +123,8 @@
 [data-style="mist"] :is(.brand) { font-size: 25px; } [data-style="mist"] :is(.pane h2) { font-size: 19px; } [data-style="mist"] .gridhead h2 { font-size: 23px; }
 [data-style="sage"] .top { background-image: none; }
 * { box-sizing: border-box; }
+/* no pull-to-refresh: plans sync live, so a pull down just scrolls */
+html, body { overscroll-behavior-y: none; }
 html { background-color: var(--desk); background-image: var(--bg-image); background-size: var(--bg-size); background-position: var(--bg-pos); background-repeat: var(--bg-repeat); background-attachment: fixed; min-height: 100%; }
 html { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
 body { margin: 0; -webkit-font-smoothing: antialiased; }
