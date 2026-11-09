@@ -253,8 +253,6 @@ a.btn { text-decoration: none; display: inline-flex; align-items: center; }
 .setup details[open] summary { margin-bottom: 8px; }
 .hint.err:not(:empty) { color: var(--ink); background: var(--sunk); padding: 6px 10px; border-radius: 8px; }
 .hint:empty { display: none; }
-.vault-out { margin-top: 12px; padding: 14px; border: 1px solid var(--accent); border-radius: 12px; background: var(--accent-soft); display: grid; gap: 8px; }
-.vault-out textarea { width: 100%; font-family: var(--f-mono); font-size: 11.5px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); padding: 8px; resize: vertical; }
 .loading { padding: 40px 0; text-align: center; color: var(--muted); }
 .banner { margin-bottom: 14px; padding: 8px 12px; border-radius: 10px; background: var(--sunk); color: var(--muted); font-size: 13px; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
@@ -415,7 +413,7 @@ const Store = {
     const cfg = lsGet(CFG_KEY); const cache = lsGet(LS_KEY);
     if (cache && cache.docs) { S.docs = cache.docs; this.sha = cache.sha || null; } else if (cache && !cache.docs) { S.docs = cache; }
     if (cfg && cfg.mode === "local") { S.mode = "local"; S.ready = true; setSync("local", "This device only"); setBanner("Sync is off, so these plans are saved on this device only. <a href=\"#\" data-act=\"settings\">Connect GitHub</a> to sync."); render(); return; }
-    if (!cfg || !cfg.token) { S.mode = "setup"; S.ready = true; setSync("local", "Logged out"); render(); return; }
+    if (!cfg || !cfg.token) { S.mode = "setup"; S.ready = true; setSync("local", "Not connected"); render(); return; }
     GH.cfg = cfg; S.mode = "gh"; S.ready = true; render();
     startSyncLoop();
     await this.refresh(true);
@@ -479,44 +477,14 @@ const Store = {
 };
 window.addEventListener("beforeunload", e => { if (Store.busy && S.mode === "gh") { Store.flushNow(); e.preventDefault(); } });
 
-// ---------- login: a password-encrypted copy of the token ----------
-// The token is encrypted in this browser (PBKDF2-SHA256 600k rounds -> AES-256-GCM) and only the
-// encrypted file is saved to the public app repo at vaults/<username>.json. Without the password it is useless.
-const LASTUSER_KEY = "hourbox-lastuser";
-const VAULT_ITER = 600000;
-const onPages = location.hostname.endsWith(".github.io");
-const APP_OWNER = (onPages && location.hostname.split(".")[0]) || "segaldev";
-const APP_REPO = (onPages && location.pathname.split("/")[1]) || "hourbox";
-const cleanUser = v => String(v || "").trim().toLowerCase().replace(/[^a-z0-9_-]/g, "");
-const u8b64 = u8 => { let s = ""; u8.forEach(c => s += String.fromCharCode(c)); return btoa(s); };
-const b64u8 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
-async function deriveKey(pw, salt, iter) {
-  const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(pw.normalize("NFKC")), "PBKDF2", false, ["deriveKey"]);
-  return crypto.subtle.deriveKey({ name: "PBKDF2", hash: "SHA-256", salt, iterations: iter }, base, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
-}
-async function makeVault(pw, payload) {
-  const salt = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(12));
-  const key = await deriveKey(pw, salt, VAULT_ITER);
-  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, new TextEncoder().encode(JSON.stringify(payload))));
-  return { app: "hourbox", v: 1, kdf: "PBKDF2-SHA256", iter: VAULT_ITER, salt: u8b64(salt), iv: u8b64(iv), ct: u8b64(ct) };
-}
-async function openVault(v, pw) {
-  const key = await deriveKey(pw, b64u8(v.salt), v.iter);
-  const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv: b64u8(v.iv) }, key, b64u8(v.ct));
-  return JSON.parse(new TextDecoder().decode(pt));
-}
-async function fetchVault(user) {
-  try { const r = await fetch(`vaults/${encodeURIComponent(user)}.json?t=${Date.now()}`, { cache: "no-store" }); if (!r.ok) return null; const v = await r.json(); return v && v.ct ? v : null; }
-  catch (e) { return null; }
-}
-
 function tokenFormHTML(cfg) {
   return `<form class="setup-form" data-form="setup">
-      <div class="field"><label for="su-owner">GitHub username</label><input type="text" id="su-owner" value="${esc(cfg.owner || APP_OWNER)}" autocapitalize="off" spellcheck="false"></div>
+      <div class="field"><label for="su-owner">GitHub username</label><input type="text" id="su-owner" value="${esc(cfg.owner || "segaldev")}" autocapitalize="off" spellcheck="false"></div>
       <div class="field"><label for="su-repo">Private data repo</label><input type="text" id="su-repo" value="${esc(cfg.repo || "hourbox-data")}" autocapitalize="off" spellcheck="false"></div>
       <div class="field"><label for="su-token">Access token</label><input type="password" id="su-token" placeholder="github_pat_…" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
-      <p class="hint" id="su-msg" role="status"></p>
-      <div class="setup-actions"><button class="btn ${cfg.token ? "" : "primary"}" type="submit" id="su-go">${cfg.token ? "Replace token" : "Connect"}</button></div>
+      <p class="hint err" id="su-msg" role="status"></p>
+      <div class="setup-actions"><button class="btn ${cfg.token ? "" : "primary"}" type="submit" id="su-go">${cfg.token ? "Replace token" : "Connect"}</button>
+      ${cfg.token ? "" : `<button class="btn ghost" type="button" data-act="use-local" id="su-local">Use without sync for now</button>`}</div>
     </form>`;
 }
 const tokenSteps = `<ol class="steps">
@@ -525,50 +493,22 @@ const tokenSteps = `<ol class="steps">
         <ul><li>Repository access: <i>Only select repositories</i> → <code>hourbox-data</code></li>
         <li>Permissions → Repository permissions → <i>Contents</i>: <b>Read and write</b></li>
         <li>Pick an expiration you’re comfortable with, then <i>Generate token</i> and copy it.</li></ul></li>
-      <li><b>Paste it below.</b> Once connected, open Account settings to set a password so you never need the token again.</li>
+      <li><b>Paste it below.</b> Do this once on each device (Mac, phone). The token stays in that browser only.</li>
     </ol>`;
-
 function renderSetup() {
   const cfg = lsGet(CFG_KEY) || {}; const connected = cfg.token && cfg.mode !== "local";
-  const lastUser = lsGet(LASTUSER_KEY) || cfg.loginUser || APP_OWNER;
   if (connected) return `<section class="pane setup">
     <div class="pane-head"><h2>Account</h2></div>
-    <p>This device is logged in and syncing with your private repo <b>${esc(cfg.owner)}/${esc(cfg.repo)}</b>.</p>
-    <div class="setup-actions"><button class="btn primary" type="button" data-act="setup-back" id="su-back">Back to planner</button><button class="btn ghost" type="button" data-act="disconnect" id="su-disc">Log out of this device</button></div>
+    <p>This device is connected and syncing with your private repo <b>${esc(cfg.owner)}/${esc(cfg.repo)}</b>.</p>
+    <div class="setup-actions"><button class="btn primary" type="button" data-act="setup-back" id="su-back">Back to planner</button><button class="btn ghost" type="button" data-act="disconnect" id="su-disc">Disconnect this device</button></div>
     <hr class="sep">
-    <p class="sect-title">Password login</p>
-    <p>Set a password so you can log in on any device with your username and password. You won’t need the token again.</p>
-    <p class="hint" id="pw-state">Checking for an existing password…</p>
-    <form class="setup-form" data-form="setpw">
-      <div class="field"><label for="pw-user">Username</label><input type="text" id="pw-user" value="${esc(lastUser)}" autocomplete="username" autocapitalize="off" spellcheck="false"></div>
-      <div class="field"><label for="pw-new">New password</label><input type="password" id="pw-new" autocomplete="new-password"></div>
-      <div class="field"><label for="pw-new2">Repeat password</label><input type="password" id="pw-new2" autocomplete="new-password"></div>
-      <p class="hint">Use at least 12 characters, and don’t reuse a password from another site. A few random words work well. Let your password manager save it.</p>
-      <p class="hint err" id="pw-msg" role="status"></p>
-      <div class="setup-actions"><button class="btn primary" type="submit" id="pw-go">Create password file</button></div>
-    </form>
-    <div id="pw-out"></div>
-    <hr class="sep">
-    <details><summary>Replace the access token</summary><p class="hint">Use this when your token expires. Afterwards, set your password again so the saved file holds the new token.</p>${tokenFormHTML(cfg)}</details>
+    <details><summary>Replace the access token</summary><p class="hint">Use this when your token expires.</p>${tokenFormHTML(cfg)}</details>
   </section>`;
   return `<section class="pane setup">
-    <div class="pane-head"><h2>Log in to Hourbox</h2></div>
-    <p>Your plans live in a <b>private</b> GitHub repository in your account. Only you can read it.</p>
-    <form class="setup-form" data-form="login">
-      <div class="field"><label for="li-user">Username</label><input type="text" id="li-user" value="${esc(lastUser)}" autocomplete="username" autocapitalize="off" spellcheck="false"></div>
-      <div class="field"><label for="li-pw">Password</label><input type="password" id="li-pw" autocomplete="current-password"></div>
-      <p class="hint err" id="li-msg" role="status"></p>
-      <div class="setup-actions"><button class="btn primary" type="submit" id="li-go">Log in</button><button class="btn ghost" type="button" data-act="use-local" id="su-local">Use without sync for now</button></div>
-    </form>
-    <hr class="sep">
-    <details id="tok-details"><summary>First time, or no password yet? Connect with an access token</summary>${tokenSteps}${tokenFormHTML(cfg)}</details>
+    <div class="pane-head"><h2>Connect your private data repo</h2></div>
+    <p>Hourbox keeps your plans in a <b>private</b> GitHub repository in your own account. Only you can read it. This page’s code is public, but your plans never are.</p>
+    ${tokenSteps}${tokenFormHTML(cfg)}
   </section>`;
-}
-async function setupAfterRender() {
-  const st = $("#pw-state"); if (!st) return;
-  const user = cleanUser($("#pw-user").value); const v = user && await fetchVault(user);
-  if ($("#pw-state") !== st) return;
-  st.textContent = v ? `A password is already set up for “${user}”. Creating a new one replaces it.` : "No password is set up yet.";
 }
 function startSyncLoop() {
   if (Store._started) return; Store._started = true;
@@ -576,68 +516,19 @@ function startSyncLoop() {
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") Store.refresh(); else Store.flushNow(); });
   window.addEventListener("pagehide", () => Store.flushNow());
 }
-async function connectWith(c, msg, btn, fromLogin) {
+async function connectSetup() {
+  const owner = $("#su-owner").value.trim(), repo = $("#su-repo").value.trim(), token = $("#su-token").value.trim();
+  const msg = $("#su-msg"), btn = $("#su-go"); if (!owner || !repo || !token) { msg.textContent = "Fill in all three fields."; return; }
   const prev = lsGet(CFG_KEY);
   btn.disabled = true; msg.textContent = "Checking the repository…";
-  GH.cfg = { owner: c.owner, repo: c.repo, token: c.token };
+  GH.cfg = { owner, repo, token };
   try { await GH.checkRepo(); }
-  catch (e) {
-    btn.disabled = false; GH.cfg = prev && prev.token ? prev : null;
-    msg.textContent = fromLogin && e.kind === "auth" ? "Your password is right, but the GitHub token saved with it no longer works (it may have expired). Connect with a new token below, then set your password again."
-      : (e.msg || "Can’t reach GitHub. Check your connection and try again.");
-    if (fromLogin && e.kind === "auth") { const d = $("#tok-details"); if (d) d.open = true; }
-    return false;
-  }
-  const keepUser = (prev && prev.loginUser) || undefined;
-  lsSet(CFG_KEY, { owner: c.owner, repo: c.repo, token: c.token, loginUser: fromLogin || keepUser });
-  if (fromLogin) lsSet(LASTUSER_KEY, fromLogin);
+  catch (e) { btn.disabled = false; GH.cfg = prev && prev.token ? prev : null; msg.textContent = e.msg || "Can’t reach GitHub. Check your connection and try again."; return; }
+  lsSet(CFG_KEY, { owner, repo, token });
   S.mode = "gh"; S.showSetup = false; setBanner(""); render(); startSyncLoop();
   Store.sha = (lsGet(LS_KEY) || {}).sha || null;
   await Store.refresh(true);
-  return true;
-}
-async function connectSetup() {
-  const owner = $("#su-owner").value.trim(), repo = $("#su-repo").value.trim(), token = $("#su-token").value.trim();
-  const msg = $("#su-msg"); if (!owner || !repo || !token) { msg.textContent = "Fill in all three fields."; return; }
-  const wasConnected = (lsGet(CFG_KEY) || {}).token;
-  if (await connectWith({ owner, repo, token }, msg, $("#su-go"), null)) toast(wasConnected ? "Token replaced. Set your password again so the saved file uses it." : "Connected. Open Account settings to set a password for next time.");
-}
-async function loginSubmit() {
-  const user = cleanUser($("#li-user").value), pw = $("#li-pw").value, msg = $("#li-msg"), btn = $("#li-go");
-  if (!user || !pw) { msg.textContent = "Enter your username and password."; return; }
-  if (!window.crypto || !crypto.subtle) { msg.textContent = "This browser can’t unlock the password file. Open Hourbox over https."; return; }
-  btn.disabled = true; msg.textContent = "Logging in…";
-  const v = await fetchVault(user);
-  if (!v) { btn.disabled = false; msg.textContent = `No password is set up for “${user}”. If you just created it, wait a minute for GitHub to publish it and try again. Otherwise connect with an access token below.`; return; }
-  let c; try { c = await openVault(v, pw); } catch (e) { btn.disabled = false; msg.textContent = "That password doesn’t match. Try again."; return; }
-  if (await connectWith(c, msg, btn, user)) toast("Logged in.");
-}
-async function setPassword() {
-  const user = cleanUser($("#pw-user").value), pw = $("#pw-new").value, pw2 = $("#pw-new2").value, msg = $("#pw-msg"), btn = $("#pw-go");
-  if (!user) { msg.textContent = "Choose a username (letters, numbers, - or _)."; return; }
-  if (pw.length < 12) { msg.textContent = "Use at least 12 characters."; return; }
-  if (pw !== pw2) { msg.textContent = "The two passwords don’t match."; return; }
-  const cfg = lsGet(CFG_KEY) || {};
-  btn.disabled = true; msg.textContent = "Encrypting…";
-  let v; try { v = await makeVault(pw, { owner: cfg.owner, repo: cfg.repo, token: cfg.token }); await openVault(v, pw); }
-  catch (e) { btn.disabled = false; msg.textContent = "Couldn’t encrypt in this browser. Try Safari or Chrome over https."; return; }
-  const json = JSON.stringify(v, null, 2) + "\n";
-  const exists = !!(await fetchVault(user));
-  const path = `vaults/${user}.json`;
-  const url = exists ? `https://github.com/${APP_OWNER}/${APP_REPO}/edit/main/${path}`
-    : `https://github.com/${APP_OWNER}/${APP_REPO}/new/main?filename=${encodeURIComponent(path)}&value=${encodeURIComponent(json)}`;
-  lsSet(CFG_KEY, Object.assign(cfg, { loginUser: user })); lsSet(LASTUSER_KEY, user);
-  $("#pw-new").value = ""; $("#pw-new2").value = ""; btn.disabled = false; msg.textContent = "";
-  $("#pw-out").innerHTML = `<div class="vault-out">
-    <p class="sect-title">Last step: save the password file to your app repo</p>
-    <ol class="steps">
-      ${exists ? `<li>Click <b>Copy file text</b>, then <b>Open GitHub</b>. Select everything in the file and paste over it.</li>` : `<li>Click <b>Open GitHub</b>. The new file <code>${esc(path)}</code> is already filled in.</li>`}
-      <li>Click <i>Commit changes</i>.</li>
-      <li>Wait about a minute for GitHub Pages to publish it. Then log in on any device as <b>${esc(user)}</b> with your password.</li>
-    </ol>
-    <div class="setup-actions"><a class="btn primary" href="${esc(url)}" target="_blank" rel="noopener">Open GitHub</a><button class="btn" type="button" data-act="copy-vault" id="copy-vault">Copy file text</button></div>
-    <textarea id="vault-text" readonly rows="5" aria-label="Password file contents">${esc(json)}</textarea>
-    <p class="hint">This file is public but encrypted. It holds no readable token, and it’s useless without your password.</p></div>`;
+  toast(prev && prev.token ? "Token replaced." : "Connected. Your plans now sync through " + repo + ".");
 }
 function setSync(s, text) { const el = $("#sync"); el.dataset.s = s; el.textContent = text; }
 function setBanner(html) { $("#banner").innerHTML = html ? `<div class="banner">${html}</div>` : ""; }
@@ -651,11 +542,11 @@ function render() {
   renderHeader();
   if (!S.ready) return;
   if (S.mode === "setup" || S.showSetup) {
-    const keep = {}; ["li-pw", "su-token", "pw-new", "pw-new2"].forEach(id => { const el = document.getElementById(id); if (el) keep[id] = el.value; });
+    const keep = {}; ["su-token"].forEach(id => { const el = document.getElementById(id); if (el) keep[id] = el.value; });
     $("#app").innerHTML = renderSetup(); $("#placebar").hidden = true;
     Object.entries(keep).forEach(([id, v]) => { const el = document.getElementById(id); if (el) el.value = v; });
     if (fid) document.getElementById(fid)?.focus();
-    setupAfterRender(); return;
+    return;
   }
   $("#app").innerHTML = S.view === "day" ? renderDay() : renderMonth();
   placeNowLine();
@@ -913,12 +804,7 @@ document.addEventListener("click", e => {
     case "settings": e.preventDefault(); S.showSetup = true; S.placing = null; render(); window.scrollTo(0, 0); break;
     case "setup-back": S.showSetup = false; render(); break;
     case "use-local": lsSet(CFG_KEY, { mode: "local" }); S.mode = "local"; S.showSetup = false; setSync("local", "This device only"); setBanner("Sync is off, so these plans are saved on this device only. <a href=\"#\" data-act=\"settings\">Connect GitHub</a> to sync."); render(); break;
-    case "disconnect": lsSet(CFG_KEY, null); lsSet(LS_KEY, null); S.docs = {}; Store.sha = null; GH.cfg = null; Store.dirty.clear(); S.mode = "setup"; S.showSetup = false; setSync("local", "Logged out"); render(); toast("Logged out. This device’s copy of your plans was removed."); break;
-    case "copy-vault": {
-      const ta = $("#vault-text"); const done = () => toast("Copied.");
-      const fallback = () => { ta.focus(); ta.select(); toast("Text selected. Press Cmd+C to copy."); };
-      try { navigator.clipboard.writeText(ta.value).then(done, fallback); } catch (err) { fallback(); }
-      break; }
+    case "disconnect": lsSet(CFG_KEY, null); lsSet(LS_KEY, null); S.docs = {}; Store.sha = null; GH.cfg = null; Store.dirty.clear(); S.mode = "setup"; S.showSetup = false; setSync("local", "Not connected"); render(); toast("This device is disconnected and its copy of your plans was removed."); break;
     case "reopen": mutateDay(k, d => { d.finished = false; }); toast("Day reopened. Finish it again when you’re done."); break;
   }
 });
@@ -929,8 +815,6 @@ document.addEventListener("keydown", e => {
 document.addEventListener("submit", e => {
   const f = e.target.closest("[data-form]"); if (!f) return; e.preventDefault();
   if (f.dataset.form === "setup") { connectSetup(); return; }
-  if (f.dataset.form === "login") { loginSubmit(); return; }
-  if (f.dataset.form === "setpw") { setPassword(); return; }
   const inp = f.querySelector("input"); const text = inp.value.trim(); if (!text) return;
   if (f.dataset.form === "dump") mutateDay(S.date, d => { d.dump.push({ id: rid(), text }); });
   else mutatePark(p => { p.items.push({ id: rid(), text }); });
