@@ -2,13 +2,27 @@
   "name": "Hourbox",
   "short_name": "Hourbox",
   "description": "A 1-hour time-boxing planner.",
-  "start_url": "./",
+  "start_url": "/hourbox/",
   "display": "standalone",
   "background_color": "#F3F5F8",
   "theme_color": "#17202D",
   "icons": [
-    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" },
-    { "src": "icon-180.png", "sizes": "180x180", "type": "image/png" },
-    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
-  ]
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "icon-180.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "id": "/hourbox/",
+  "scope": "/"
 }
