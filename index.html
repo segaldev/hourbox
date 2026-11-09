@@ -130,7 +130,23 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 .hour:first-child { border-top: 0; }
 .hlabel { font-family: var(--f-mono); font-size: 12px; color: var(--muted); padding: 8px 10px 0 12px; text-align: right; font-variant-numeric: tabular-nums; border-right: 1px solid var(--line); }
 .hour.now .hlabel { color: var(--now); font-weight: 500; }
-.cell { position: relative; padding: 6px 8px; }
+.cells { display: grid; min-width: 0; }
+.cell { position: relative; padding: 6px 8px; min-width: 0; }
+.split-2 .cell, .split-4 .cell { padding: 3px 8px; }
+.cells .cell + .cell { border-top: 1px dashed var(--line); }
+.split-2 .box { min-height: 40px; }
+.split-4 .box { min-height: 30px; padding: 2px 10px; gap: 8px; }
+.split-4 .stbtn { width: 20px; height: 20px; }
+.split-4 .box .btxt { font-size: 14px; }
+.smin { flex: none; font-family: var(--f-mono); font-size: 11px; color: var(--muted); min-width: 34px; font-variant-numeric: tabular-nums; }
+.box.empty .smin { color: var(--muted); opacity: .75; }
+.box.nowslot .smin { color: var(--now); opacity: 1; font-weight: 500; }
+.hlabel { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
+.splitbtn { font-family: var(--f-mono); font-size: 10.5px; line-height: 1; padding: 3px 5px; border-radius: 5px; border: 1px dashed var(--line); background: transparent; color: var(--muted); opacity: 0; transition: opacity .12s; }
+.hour:hover .splitbtn, .splitbtn:focus-visible, .splitbtn.on { opacity: 1; }
+.splitbtn.on { border-style: solid; border-color: var(--accent); color: var(--accent); }
+.splitbtn:hover { color: var(--ink); border-color: var(--muted); }
+@media (hover: none) { .splitbtn { opacity: .8; } }
 .box { width: 100%; height: 100%; min-height: 50px; border-radius: 9px; border: 1.5px dashed transparent; background: transparent; text-align: left; display: flex; align-items: center; gap: 10px; padding: 6px 10px; transition: background .12s, border-color .12s; }
 .box.empty { color: transparent; }
 .box.empty:hover, .placing .box.empty { border-color: var(--line); color: var(--muted); }
@@ -231,6 +247,14 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 .field input[type=password] { border: 1px solid var(--line); background: var(--paper); border-radius: 9px; padding: 8px 10px; width: 100%; font-family: var(--f-mono); }
 .field input[type=password]:focus { outline: none; border-color: var(--accent); background: var(--surface); }
 .setup-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+a.btn { text-decoration: none; display: inline-flex; align-items: center; }
+.setup .sep { border: 0; border-top: 1px solid var(--line); margin: 14px 0 10px; width: 100%; }
+.setup details summary { cursor: pointer; font-weight: 600; padding: 4px 0; }
+.setup details[open] summary { margin-bottom: 8px; }
+.hint.err:not(:empty) { color: var(--ink); background: var(--sunk); padding: 6px 10px; border-radius: 8px; }
+.hint:empty { display: none; }
+.vault-out { margin-top: 12px; padding: 14px; border: 1px solid var(--accent); border-radius: 12px; background: var(--accent-soft); display: grid; gap: 8px; }
+.vault-out textarea { width: 100%; font-family: var(--f-mono); font-size: 11.5px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); padding: 8px; resize: vertical; }
 .loading { padding: 40px 0; text-align: center; color: var(--muted); }
 .banner { margin-bottom: 14px; padding: 8px 12px; border-radius: 10px; background: var(--sunk); color: var(--muted); font-size: 13px; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
@@ -252,7 +276,7 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
       <button class="btn ghost" id="nav-today" data-act="today">Today</button>
     </div>
     <span class="sync" id="sync" data-s="saving">Connecting…</span>
-    <button class="iconbtn" id="settings" data-act="settings" aria-label="Sync settings" title="Sync settings"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg></button>
+    <button class="iconbtn" id="settings" data-act="settings" aria-label="Account and sync" title="Account and sync"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg></button>
   </header>
   <div id="banner"></div>
   <main id="app"><div class="loading">Loading your planner…</div></main>
@@ -276,6 +300,18 @@ const addDays = (k, n) => { const d = parseKey(k); d.setDate(d.getDate() + n); r
 const todayKey = () => keyOf(new Date());
 const hourLabel = h => h === 24 ? "Midnight" : new Date(2000, 0, 1, h).toLocaleTimeString([], { hour: "numeric" });
 const hourShort = h => new Date(2000, 0, 1, h).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+// Slots: an hour is one 60-minute box (key "9"), or split into 30s ("9:00", "9:30") or 15s ("9:00" … "9:45").
+const splitOf = (d, h) => (d.splits && d.splits[h]) || 1;
+const slotKeys = (d, h) => { const n = splitOf(d, h); return n === 1 ? [String(h)] : Array.from({ length: n }, (_, i) => `${h}:${pad(i * 60 / n)}`); };
+const hourOfKey = k => parseInt(k, 10);
+const minOfKey = k => { const [h, m] = String(k).split(":"); return +h * 60 + (+m || 0); };
+const lenOfKey = (d, k) => 60 / splitOf(d, hourOfKey(k));
+const timeLabel = min => new Date(2000, 0, 1, Math.floor(min / 60) % 24, min % 60).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+const slotRange = (d, k) => `${timeLabel(minOfKey(k))} – ${timeLabel(minOfKey(k) + lenOfKey(d, k))}`;
+const fmtDur = m => { const h = Math.floor(m / 60), r = m % 60; return h && r ? `${h}h ${r}m` : h ? `${h}h` : `${r}m`; };
+const sortedKeys = d => Object.keys(d.boxes).sort((a, b) => minOfKey(a) - minOfKey(b));
+const hourHasBox = (d, h) => Object.keys(d.boxes).some(k => hourOfKey(k) === h);
+function nextSlot(d, k) { const h = hourOfKey(k), ks = slotKeys(d, h), i = ks.indexOf(String(k)); if (i >= 0 && i < ks.length - 1) return ks[i + 1]; return h >= 23 ? null : slotKeys(d, h + 1)[0]; }
 const TAGS = [["", "None"], ["deep", "Deep work"], ["meet", "Meetings"], ["admin", "Admin"], ["personal", "Personal"]];
 const TAGNAME = Object.fromEntries(TAGS);
 const ICON = {
@@ -379,12 +415,10 @@ const Store = {
     const cfg = lsGet(CFG_KEY); const cache = lsGet(LS_KEY);
     if (cache && cache.docs) { S.docs = cache.docs; this.sha = cache.sha || null; } else if (cache && !cache.docs) { S.docs = cache; }
     if (cfg && cfg.mode === "local") { S.mode = "local"; S.ready = true; setSync("local", "This device only"); setBanner("Sync is off, so these plans are saved on this device only. <a href=\"#\" data-act=\"settings\">Connect GitHub</a> to sync."); render(); return; }
-    if (!cfg || !cfg.token) { S.mode = "setup"; S.ready = true; setSync("local", "Not connected"); render(); return; }
-    GH.cfg = cfg; S.mode = "gh"; S.ready = true; this._started = true; render();
+    if (!cfg || !cfg.token) { S.mode = "setup"; S.ready = true; setSync("local", "Logged out"); render(); return; }
+    GH.cfg = cfg; S.mode = "gh"; S.ready = true; render();
+    startSyncLoop();
     await this.refresh(true);
-    setInterval(() => this.refresh(), 60000);
-    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") this.refresh(); else this.flushNow(); });
-    window.addEventListener("pagehide", () => this.flushNow());
   },
   cache() { lsSet(LS_KEY, { docs: S.docs, sha: this.sha }); },
   async refresh(first) {
@@ -445,49 +479,166 @@ const Store = {
 };
 window.addEventListener("beforeunload", e => { if (Store.busy && S.mode === "gh") { Store.flushNow(); e.preventDefault(); } });
 
-function renderSetup() {
-  const cfg = lsGet(CFG_KEY) || {}; const connected = cfg.token && cfg.mode !== "local";
-  return `<section class="pane setup">
-    <div class="pane-head"><h2>${connected ? "Sync settings" : "Connect your private data repo"}</h2></div>
-    <p>Hourbox keeps your plans in a <b>private</b> GitHub repository in your own account. Only you can read it. This page’s code is public, but your plans never are.</p>
-    ${connected ? `<p class="hint">This device is connected to <b>${esc(cfg.owner)}/${esc(cfg.repo)}</b>. Paste a new token below to replace the old one.</p>` : `
-    <ol class="steps">
+// ---------- login: a password-encrypted copy of the token ----------
+// The token is encrypted in this browser (PBKDF2-SHA256 600k rounds -> AES-256-GCM) and only the
+// encrypted file is saved to the public app repo at vaults/<username>.json. Without the password it is useless.
+const LASTUSER_KEY = "hourbox-lastuser";
+const VAULT_ITER = 600000;
+const onPages = location.hostname.endsWith(".github.io");
+const APP_OWNER = (onPages && location.hostname.split(".")[0]) || "segaldev";
+const APP_REPO = (onPages && location.pathname.split("/")[1]) || "hourbox";
+const cleanUser = v => String(v || "").trim().toLowerCase().replace(/[^a-z0-9_-]/g, "");
+const u8b64 = u8 => { let s = ""; u8.forEach(c => s += String.fromCharCode(c)); return btoa(s); };
+const b64u8 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+async function deriveKey(pw, salt, iter) {
+  const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(pw.normalize("NFKC")), "PBKDF2", false, ["deriveKey"]);
+  return crypto.subtle.deriveKey({ name: "PBKDF2", hash: "SHA-256", salt, iterations: iter }, base, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+}
+async function makeVault(pw, payload) {
+  const salt = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(12));
+  const key = await deriveKey(pw, salt, VAULT_ITER);
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, new TextEncoder().encode(JSON.stringify(payload))));
+  return { app: "hourbox", v: 1, kdf: "PBKDF2-SHA256", iter: VAULT_ITER, salt: u8b64(salt), iv: u8b64(iv), ct: u8b64(ct) };
+}
+async function openVault(v, pw) {
+  const key = await deriveKey(pw, b64u8(v.salt), v.iter);
+  const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv: b64u8(v.iv) }, key, b64u8(v.ct));
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+async function fetchVault(user) {
+  try { const r = await fetch(`vaults/${encodeURIComponent(user)}.json?t=${Date.now()}`, { cache: "no-store" }); if (!r.ok) return null; const v = await r.json(); return v && v.ct ? v : null; }
+  catch (e) { return null; }
+}
+
+function tokenFormHTML(cfg) {
+  return `<form class="setup-form" data-form="setup">
+      <div class="field"><label for="su-owner">GitHub username</label><input type="text" id="su-owner" value="${esc(cfg.owner || APP_OWNER)}" autocapitalize="off" spellcheck="false"></div>
+      <div class="field"><label for="su-repo">Private data repo</label><input type="text" id="su-repo" value="${esc(cfg.repo || "hourbox-data")}" autocapitalize="off" spellcheck="false"></div>
+      <div class="field"><label for="su-token">Access token</label><input type="password" id="su-token" placeholder="github_pat_…" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
+      <p class="hint" id="su-msg" role="status"></p>
+      <div class="setup-actions"><button class="btn ${cfg.token ? "" : "primary"}" type="submit" id="su-go">${cfg.token ? "Replace token" : "Connect"}</button></div>
+    </form>`;
+}
+const tokenSteps = `<ol class="steps">
       <li><b>Check the data repo exists and is private.</b> It’s called <code>hourbox-data</code>. If it’s missing, <a href="https://github.com/new" target="_blank" rel="noopener">create it</a> and choose <i>Private</i>.</li>
       <li><b>Create an access token</b> on <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">GitHub’s fine-grained token page</a>:
         <ul><li>Repository access: <i>Only select repositories</i> → <code>hourbox-data</code></li>
         <li>Permissions → Repository permissions → <i>Contents</i>: <b>Read and write</b></li>
         <li>Pick an expiration you’re comfortable with, then <i>Generate token</i> and copy it.</li></ul></li>
-      <li><b>Paste it below.</b> Do this once on each device (Mac, phone). The token stays in that browser only.</li>
-    </ol>`}
-    <form class="setup-form" data-form="setup">
-      <div class="field"><label for="su-owner">GitHub username</label><input type="text" id="su-owner" value="${esc(cfg.owner || "segaldev")}" autocomplete="username" autocapitalize="off" spellcheck="false"></div>
-      <div class="field"><label for="su-repo">Private data repo</label><input type="text" id="su-repo" value="${esc(cfg.repo || "hourbox-data")}" autocapitalize="off" spellcheck="false"></div>
-      <div class="field"><label for="su-token">Access token</label><input type="password" id="su-token" placeholder="github_pat_…" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
-      <p class="hint" id="su-msg" role="status"></p>
-      <div class="setup-actions">
-        <button class="btn primary" type="submit" id="su-go">Connect</button>
-        ${connected ? `<button class="btn" type="button" data-act="setup-back" id="su-back">Back to planner</button><button class="btn ghost" type="button" data-act="disconnect" id="su-disc">Disconnect this device</button>`
-          : `<button class="btn ghost" type="button" data-act="use-local" id="su-local">Use without sync for now</button>`}
-      </div>
-    </form></section>`;
+      <li><b>Paste it below.</b> Once connected, open Account settings to set a password so you never need the token again.</li>
+    </ol>`;
+
+function renderSetup() {
+  const cfg = lsGet(CFG_KEY) || {}; const connected = cfg.token && cfg.mode !== "local";
+  const lastUser = lsGet(LASTUSER_KEY) || cfg.loginUser || APP_OWNER;
+  if (connected) return `<section class="pane setup">
+    <div class="pane-head"><h2>Account</h2></div>
+    <p>This device is logged in and syncing with your private repo <b>${esc(cfg.owner)}/${esc(cfg.repo)}</b>.</p>
+    <div class="setup-actions"><button class="btn primary" type="button" data-act="setup-back" id="su-back">Back to planner</button><button class="btn ghost" type="button" data-act="disconnect" id="su-disc">Log out of this device</button></div>
+    <hr class="sep">
+    <p class="sect-title">Password login</p>
+    <p>Set a password so you can log in on any device with your username and password. You won’t need the token again.</p>
+    <p class="hint" id="pw-state">Checking for an existing password…</p>
+    <form class="setup-form" data-form="setpw">
+      <div class="field"><label for="pw-user">Username</label><input type="text" id="pw-user" value="${esc(lastUser)}" autocomplete="username" autocapitalize="off" spellcheck="false"></div>
+      <div class="field"><label for="pw-new">New password</label><input type="password" id="pw-new" autocomplete="new-password"></div>
+      <div class="field"><label for="pw-new2">Repeat password</label><input type="password" id="pw-new2" autocomplete="new-password"></div>
+      <p class="hint">Use at least 12 characters, and don’t reuse a password from another site. A few random words work well. Let your password manager save it.</p>
+      <p class="hint err" id="pw-msg" role="status"></p>
+      <div class="setup-actions"><button class="btn primary" type="submit" id="pw-go">Create password file</button></div>
+    </form>
+    <div id="pw-out"></div>
+    <hr class="sep">
+    <details><summary>Replace the access token</summary><p class="hint">Use this when your token expires. Afterwards, set your password again so the saved file holds the new token.</p>${tokenFormHTML(cfg)}</details>
+  </section>`;
+  return `<section class="pane setup">
+    <div class="pane-head"><h2>Log in to Hourbox</h2></div>
+    <p>Your plans live in a <b>private</b> GitHub repository in your account. Only you can read it.</p>
+    <form class="setup-form" data-form="login">
+      <div class="field"><label for="li-user">Username</label><input type="text" id="li-user" value="${esc(lastUser)}" autocomplete="username" autocapitalize="off" spellcheck="false"></div>
+      <div class="field"><label for="li-pw">Password</label><input type="password" id="li-pw" autocomplete="current-password"></div>
+      <p class="hint err" id="li-msg" role="status"></p>
+      <div class="setup-actions"><button class="btn primary" type="submit" id="li-go">Log in</button><button class="btn ghost" type="button" data-act="use-local" id="su-local">Use without sync for now</button></div>
+    </form>
+    <hr class="sep">
+    <details id="tok-details"><summary>First time, or no password yet? Connect with an access token</summary>${tokenSteps}${tokenFormHTML(cfg)}</details>
+  </section>`;
+}
+async function setupAfterRender() {
+  const st = $("#pw-state"); if (!st) return;
+  const user = cleanUser($("#pw-user").value); const v = user && await fetchVault(user);
+  if ($("#pw-state") !== st) return;
+  st.textContent = v ? `A password is already set up for “${user}”. Creating a new one replaces it.` : "No password is set up yet.";
+}
+function startSyncLoop() {
+  if (Store._started) return; Store._started = true;
+  setInterval(() => Store.refresh(), 60000);
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") Store.refresh(); else Store.flushNow(); });
+  window.addEventListener("pagehide", () => Store.flushNow());
+}
+async function connectWith(c, msg, btn, fromLogin) {
+  const prev = lsGet(CFG_KEY);
+  btn.disabled = true; msg.textContent = "Checking the repository…";
+  GH.cfg = { owner: c.owner, repo: c.repo, token: c.token };
+  try { await GH.checkRepo(); }
+  catch (e) {
+    btn.disabled = false; GH.cfg = prev && prev.token ? prev : null;
+    msg.textContent = fromLogin && e.kind === "auth" ? "Your password is right, but the GitHub token saved with it no longer works (it may have expired). Connect with a new token below, then set your password again."
+      : (e.msg || "Can’t reach GitHub. Check your connection and try again.");
+    if (fromLogin && e.kind === "auth") { const d = $("#tok-details"); if (d) d.open = true; }
+    return false;
+  }
+  const keepUser = (prev && prev.loginUser) || undefined;
+  lsSet(CFG_KEY, { owner: c.owner, repo: c.repo, token: c.token, loginUser: fromLogin || keepUser });
+  if (fromLogin) lsSet(LASTUSER_KEY, fromLogin);
+  S.mode = "gh"; S.showSetup = false; setBanner(""); render(); startSyncLoop();
+  Store.sha = (lsGet(LS_KEY) || {}).sha || null;
+  await Store.refresh(true);
+  return true;
 }
 async function connectSetup() {
   const owner = $("#su-owner").value.trim(), repo = $("#su-repo").value.trim(), token = $("#su-token").value.trim();
-  const msg = $("#su-msg"), go = $("#su-go");
-  if (!owner || !repo || !token) { msg.textContent = "Fill in all three fields."; return; }
-  go.disabled = true; msg.textContent = "Checking the repository…";
-  GH.cfg = { owner, repo, token };
-  try { await GH.checkRepo(); }
-  catch (e) { go.disabled = false; msg.textContent = e.msg || "Can’t reach GitHub. Check your connection and try again."; return; }
-  lsSet(CFG_KEY, { owner, repo, token });
-  S.mode = "gh"; setBanner(""); render();
-  if (!Store._started) { Store._started = true; setInterval(() => Store.refresh(), 60000);
-    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") Store.refresh(); else Store.flushNow(); }); }
-  Store.sha = (lsGet(LS_KEY) || {}).sha || null;
-  await Store.refresh(true);
-  toast("Connected. Your plans now sync through " + repo + ".");
+  const msg = $("#su-msg"); if (!owner || !repo || !token) { msg.textContent = "Fill in all three fields."; return; }
+  const wasConnected = (lsGet(CFG_KEY) || {}).token;
+  if (await connectWith({ owner, repo, token }, msg, $("#su-go"), null)) toast(wasConnected ? "Token replaced. Set your password again so the saved file uses it." : "Connected. Open Account settings to set a password for next time.");
 }
-
+async function loginSubmit() {
+  const user = cleanUser($("#li-user").value), pw = $("#li-pw").value, msg = $("#li-msg"), btn = $("#li-go");
+  if (!user || !pw) { msg.textContent = "Enter your username and password."; return; }
+  if (!window.crypto || !crypto.subtle) { msg.textContent = "This browser can’t unlock the password file. Open Hourbox over https."; return; }
+  btn.disabled = true; msg.textContent = "Logging in…";
+  const v = await fetchVault(user);
+  if (!v) { btn.disabled = false; msg.textContent = `No password is set up for “${user}”. If you just created it, wait a minute for GitHub to publish it and try again. Otherwise connect with an access token below.`; return; }
+  let c; try { c = await openVault(v, pw); } catch (e) { btn.disabled = false; msg.textContent = "That password doesn’t match. Try again."; return; }
+  if (await connectWith(c, msg, btn, user)) toast("Logged in.");
+}
+async function setPassword() {
+  const user = cleanUser($("#pw-user").value), pw = $("#pw-new").value, pw2 = $("#pw-new2").value, msg = $("#pw-msg"), btn = $("#pw-go");
+  if (!user) { msg.textContent = "Choose a username (letters, numbers, - or _)."; return; }
+  if (pw.length < 12) { msg.textContent = "Use at least 12 characters."; return; }
+  if (pw !== pw2) { msg.textContent = "The two passwords don’t match."; return; }
+  const cfg = lsGet(CFG_KEY) || {};
+  btn.disabled = true; msg.textContent = "Encrypting…";
+  let v; try { v = await makeVault(pw, { owner: cfg.owner, repo: cfg.repo, token: cfg.token }); await openVault(v, pw); }
+  catch (e) { btn.disabled = false; msg.textContent = "Couldn’t encrypt in this browser. Try Safari or Chrome over https."; return; }
+  const json = JSON.stringify(v, null, 2) + "\n";
+  const exists = !!(await fetchVault(user));
+  const path = `vaults/${user}.json`;
+  const url = exists ? `https://github.com/${APP_OWNER}/${APP_REPO}/edit/main/${path}`
+    : `https://github.com/${APP_OWNER}/${APP_REPO}/new/main?filename=${encodeURIComponent(path)}&value=${encodeURIComponent(json)}`;
+  lsSet(CFG_KEY, Object.assign(cfg, { loginUser: user })); lsSet(LASTUSER_KEY, user);
+  $("#pw-new").value = ""; $("#pw-new2").value = ""; btn.disabled = false; msg.textContent = "";
+  $("#pw-out").innerHTML = `<div class="vault-out">
+    <p class="sect-title">Last step: save the password file to your app repo</p>
+    <ol class="steps">
+      ${exists ? `<li>Click <b>Copy file text</b>, then <b>Open GitHub</b>. Select everything in the file and paste over it.</li>` : `<li>Click <b>Open GitHub</b>. The new file <code>${esc(path)}</code> is already filled in.</li>`}
+      <li>Click <i>Commit changes</i>.</li>
+      <li>Wait about a minute for GitHub Pages to publish it. Then log in on any device as <b>${esc(user)}</b> with your password.</li>
+    </ol>
+    <div class="setup-actions"><a class="btn primary" href="${esc(url)}" target="_blank" rel="noopener">Open GitHub</a><button class="btn" type="button" data-act="copy-vault" id="copy-vault">Copy file text</button></div>
+    <textarea id="vault-text" readonly rows="5" aria-label="Password file contents">${esc(json)}</textarea>
+    <p class="hint">This file is public but encrypted. It holds no readable token, and it’s useless without your password.</p></div>`;
+}
 function setSync(s, text) { const el = $("#sync"); el.dataset.s = s; el.textContent = text; }
 function setBanner(html) { $("#banner").innerHTML = html ? `<div class="banner">${html}</div>` : ""; }
 let toastT;
@@ -499,7 +650,13 @@ function render() {
   let fid = inApp ? a.id : null, ss, se; try { ss = a.selectionStart; se = a.selectionEnd; } catch (e) {}
   renderHeader();
   if (!S.ready) return;
-  if (S.mode === "setup") { $("#app").innerHTML = renderSetup(); $("#placebar").hidden = true; return; }
+  if (S.mode === "setup" || S.showSetup) {
+    const keep = {}; ["li-pw", "su-token", "pw-new", "pw-new2"].forEach(id => { const el = document.getElementById(id); if (el) keep[id] = el.value; });
+    $("#app").innerHTML = renderSetup(); $("#placebar").hidden = true;
+    Object.entries(keep).forEach(([id, v]) => { const el = document.getElementById(id); if (el) el.value = v; });
+    if (fid) document.getElementById(fid)?.focus();
+    setupAfterRender(); return;
+  }
   $("#app").innerHTML = S.view === "day" ? renderDay() : renderMonth();
   placeNowLine();
   if (fid) { const el = document.getElementById(fid); if (el) { el.focus(); try { if (ss != null) el.setSelectionRange(ss, se); } catch (e) {} } }
@@ -517,15 +674,17 @@ function renderHeader() {
 }
 
 function summarize(d) {
-  const bs = Object.values(d.boxes);
+  const ks = Object.keys(d.boxes), bs = ks.map(k => d.boxes[k]);
+  const mins = f => ks.filter(k => f(d.boxes[k])).reduce((a, k) => a + lenOfKey(d, k), 0);
   const pr = d.prio.filter(p => p.text.trim());
   return { planned: bs.length, done: bs.filter(b => b.status === "done").length, partial: bs.filter(b => b.status === "partial").length,
-    skipped: bs.filter(b => b.status === "skipped").length, prTotal: pr.length, prDone: pr.filter(p => p.done).length };
+    skipped: bs.filter(b => b.status === "skipped").length, plannedMin: mins(() => true), doneMin: mins(b => b.status === "done"),
+    prTotal: pr.length, prDone: pr.filter(p => p.done).length };
 }
 
 function renderDay() {
   const k = S.date, d = getDay(k), ro = d.finished;
-  const prioSched = [0, 1, 2].map(i => Object.values(d.boxes).filter(b => b.pi === i).length);
+  const prioSched = [0, 1, 2].map(i => Object.keys(d.boxes).filter(key => d.boxes[key].pi === i).reduce((a, key) => a + lenOfKey(d, key), 0));
   const picked = S.placing || {};
   // Priorities
   const prio = d.prio.map((p, i) => `
@@ -533,26 +692,27 @@ function renderDay() {
       <span class="prio-n" ${p.text.trim() && !ro ? `draggable="true" style="cursor:grab" title="Drag into an hour" data-drag='${esc(JSON.stringify({ from: "prio", i }))}'` : ""}>${i + 1}</span>
       <input type="checkbox" class="check" id="pc-${i}" data-act="prio-done" data-i="${i}" ${p.done ? "checked" : ""} ${ro ? "disabled" : ""} aria-label="Priority ${i + 1} done">
       <input type="text" id="pt-${i}" data-input="prio" data-i="${i}" value="${esc(p.text)}" placeholder="${["Most important thing today", "Second priority", "Third priority"][i]}" maxlength="140" ${ro ? "readonly" : ""}>
-      ${p.text.trim() ? `<span class="badge ${prioSched[i] ? "on" : "off"}">${prioSched[i] ? prioSched[i] + "h" : "unboxed"}</span>` : "<span></span>"}
+      ${p.text.trim() ? `<span class="badge ${prioSched[i] ? "on" : "off"}">${prioSched[i] ? fmtDur(prioSched[i]) : "unboxed"}</span>` : "<span></span>"}
       ${p.text.trim() && !ro ? `<button class="mini" data-act="pick" data-from="prio" data-i="${i}" title="Schedule into an hour" aria-label="Schedule">${ICON.clock}</button>` : "<span></span>"}
     </li>`).join("");
   // Brain dump
   const dump = d.dump.map(it => itemRow(it, "dump", ro)).join("") || `<li class="empty-note">Empty your head here. Each line becomes a card you can drop into an hour.</li>`;
   const park = getPark().items.map(it => itemRow(it, "park", false)).join("") || `<li class="empty-note">Ideas and tasks that aren’t for today. These stay here across days.</li>`;
   // Grid
-  const start = Math.min(d.start, ...Object.keys(d.boxes).map(Number)), end = Math.max(d.end, ...Object.keys(d.boxes).map(n => +n + 1));
-  const isToday = k === todayKey(), nowH = new Date().getHours();
+  const filledH = Object.keys(d.boxes).map(hourOfKey);
+  const start = Math.min(d.start, ...filledH), end = Math.max(d.end, ...filledH.map(n => n + 1));
+  const nd = new Date(), nowMin = k === todayKey() ? nd.getHours() * 60 + nd.getMinutes() : null;
   let hours = "";
-  for (let h = start; h < end; h++) hours += hourRow(d, h, ro, isToday && h === nowH);
+  for (let h = start; h < end; h++) hours += hourRow(d, h, ro, nowMin);
   const sm = summarize(d);
-  const topExt = !ro ? `<div class="extend">${start > 0 ? `<button class="btn" id="ext-up" data-act="ext" data-w="up">+ Earlier hour</button>` : ""}${start < DEF_START && !d.boxes[start] ? `<button class="btn ghost" id="ext-up-hide" data-act="ext" data-w="up-hide">Hide ${hourLabel(start)}</button>` : ""}</div>` : "";
-  const botExt = !ro ? `<div class="extend">${end < 24 ? `<button class="btn" id="ext-down" data-act="ext" data-w="down">+ Later hour</button>` : ""}${end > DEF_END && !d.boxes[end - 1] ? `<button class="btn ghost" id="ext-down-hide" data-act="ext" data-w="down-hide">Hide ${hourLabel(end - 1)}</button>` : ""}</div>` : "";
+  const topExt = !ro ? `<div class="extend">${start > 0 ? `<button class="btn" id="ext-up" data-act="ext" data-w="up">+ Earlier hour</button>` : ""}${start < DEF_START && !hourHasBox(d, start) ? `<button class="btn ghost" id="ext-up-hide" data-act="ext" data-w="up-hide">Hide ${hourLabel(start)}</button>` : ""}</div>` : "";
+  const botExt = !ro ? `<div class="extend">${end < 24 ? `<button class="btn" id="ext-down" data-act="ext" data-w="down">+ Later hour</button>` : ""}${end > DEF_END && !hourHasBox(d, end - 1) ? `<button class="btn ghost" id="ext-down-hide" data-act="ext" data-w="down-hide">Hide ${hourLabel(end - 1)}</button>` : ""}</div>` : "";
   const r = d.reflection || {};
   const summary = ro ? `<div class="summary">
       <div class="stats">
-        <div class="stat"><b>${sm.done}/${sm.planned}</b><span>hours done</span></div>
-        ${sm.partial ? `<div class="stat"><b>${sm.partial}</b><span>partly done</span></div>` : ""}
-        ${sm.skipped ? `<div class="stat"><b>${sm.skipped}</b><span>skipped</span></div>` : ""}
+        <div class="stat"><b>${fmtDur(sm.doneMin)}</b><span>done of ${fmtDur(sm.plannedMin)} boxed</span></div>
+        ${sm.partial ? `<div class="stat"><b>${sm.partial}</b><span>${sm.partial > 1 ? "boxes" : "box"} partly done</span></div>` : ""}
+        ${sm.skipped ? `<div class="stat"><b>${sm.skipped}</b><span>${sm.skipped > 1 ? "boxes" : "box"} skipped</span></div>` : ""}
         <div class="stat"><b>${sm.prDone}/${sm.prTotal}</b><span>priorities hit</span></div>
         ${r.energy ? `<div class="stat"><b>${r.energy}/5</b><span>energy</span></div>` : ""}
       </div>
@@ -572,7 +732,7 @@ function renderDay() {
       <form class="add" data-form="park"><input type="text" id="add-park" placeholder="Not today, but don’t lose it" maxlength="200" autocomplete="off"><button class="btn" type="submit">Add</button></form>
       <ul class="items">${park}</ul></section>
     <section class="a-grid ${ro ? "readonly" : ""}">
-      <div class="gridhead"><div><h2>${esc(dl)}</h2><div class="meta">${sm.planned} of ${end - start} hours boxed${sm.done ? ` · ${sm.done} done` : ""}${ro ? " · Finished" : ""}</div></div>
+      <div class="gridhead"><div><h2>${esc(dl)}</h2><div class="meta">${sm.plannedMin ? fmtDur(sm.plannedMin) : "0h"} of ${end - start}h boxed${sm.doneMin ? ` · ${fmtDur(sm.doneMin)} done` : ""}${ro ? " · Finished" : ""}</div></div>
         ${ro ? `<button class="btn" id="reopen" data-act="reopen">Reopen day</button>` : `<button class="btn primary" id="finish" data-act="finish">Finish day</button>`}</div>
       ${summary}${topExt}<div class="hours" id="hours">${hours}</div>${botExt}
     </section></div>`;
@@ -586,21 +746,48 @@ function itemRow(it, from, ro) {
     ${ro ? "" : `<button class="mini" data-act="pick" data-from="${from}" data-id="${it.id}" title="Schedule into an hour" aria-label="Schedule">${ICON.clock}</button>${other}
     <button class="mini" data-act="del-item" data-from="${from}" data-id="${it.id}" title="Delete" aria-label="Delete">${ICON.x}</button>`}</li>`;
 }
-function hourRow(d, h, ro, now) {
-  const b = d.boxes[h];
+function hourRow(d, h, ro, nowMin) {
+  const ks = slotKeys(d, h), n = ks.length;
+  const isNowHour = nowMin != null && Math.floor(nowMin / 60) === h;
+  const lbl = n === 1 ? "1h" : n === 2 ? "30m" : "15m", nxt = n === 1 ? "30-minute" : n === 2 ? "15-minute" : "one 1-hour";
+  return `<div class="hour split-${n} ${isNowHour ? "now" : ""}" data-h="${h}">
+    <div class="hlabel"><span>${hourLabel(h)}</span>${ro ? "" : `<button class="splitbtn ${n > 1 ? "on" : ""}" id="split-${h}" data-act="split" data-h="${h}" title="Box length. Click to split into ${nxt} boxes." aria-label="Box length ${lbl}. Change">${lbl}</button>`}</div>
+    <div class="cells">${ks.map(key => slotBox(d, key, ro, n, nowMin)).join("")}</div></div>`;
+}
+function slotBox(d, key, ro, n, nowMin) {
+  const b = d.boxes[key], id = key.replace(":", "-"), m0 = minOfKey(key);
+  const sub = n > 1 ? `<span class="smin">${timeLabel(m0).replace(/\s?[AP]M$/i, "")}</span>` : "";
+  const now = nowMin != null && nowMin >= m0 && nowMin < m0 + 60 / n ? " nowslot" : "";
   let inner;
   if (b) {
     const st = b.status || "planned";
-    inner = `<div class="box filled st-${st}" role="button" tabindex="0" id="box-${h}" data-act="box" data-h="${h}" ${ro ? "" : `draggable="true" data-drag='${esc(JSON.stringify({ from: "box", h }))}'`}>
-      <button class="stbtn ${st}" id="st-${h}" data-act="cycle" data-h="${h}" title="Status: ${st}. Click to change." aria-label="Status ${st}">${st === "done" ? ICON.check : st === "skipped" ? ICON.x : ""}</button>
+    inner = `<div class="box filled st-${st}${now}" role="button" tabindex="0" id="box-${id}" data-act="box" data-h="${key}" ${ro ? "" : `draggable="true" data-drag='${esc(JSON.stringify({ from: "box", h: key }))}'`}>
+      ${sub}<button class="stbtn ${st}" id="st-${id}" data-act="cycle" data-h="${key}" title="Status: ${st}. Click to change." aria-label="Status ${st}">${st === "done" ? ICON.check : st === "skipped" ? ICON.x : ""}</button>
       <span class="btxt">${esc(b.text)}</span>
       ${b.pi != null ? `<span class="prio-flag" title="Top priority">P${b.pi + 1}</span>` : ""}
       ${b.tag ? `<span class="tag tg-${b.tag}">${esc(TAGNAME[b.tag] || b.tag)}</span>` : ""}
     </div>`;
   } else {
-    inner = `<div class="box empty" role="button" tabindex="0" id="box-${h}" data-act="box" data-h="${h}"><span class="plus">${ro ? "" : "+ Box this hour"}</span></div>`;
+    inner = `<div class="box empty${now}" role="button" tabindex="0" id="box-${id}" data-act="box" data-h="${key}">${sub}<span class="plus">${ro ? "" : n === 1 ? "+ Box this hour" : "+"}</span></div>`;
   }
-  return `<div class="hour ${now ? "now" : ""}" data-h="${h}"><div class="hlabel">${hourLabel(h)}</div><div class="cell" data-drop="${h}">${inner}</div></div>`;
+  return `<div class="cell" data-drop="${key}">${inner}</div>`;
+}
+function setSplit(h) {
+  const k = S.date, d0 = getDay(k), cur = splitOf(d0, h), n = cur === 1 ? 2 : cur === 2 ? 4 : 1;
+  let bumped = [];
+  mutateDay(k, d => {
+    const old = Object.keys(d.boxes).filter(key => hourOfKey(key) === h).sort((a, b) => minOfKey(a) - minOfKey(b)).map(key => [key, d.boxes[key]]);
+    old.forEach(([key]) => delete d.boxes[key]);
+    d.splits = d.splits || {}; if (n === 1) delete d.splits[h]; else d.splits[h] = n;
+    const ks = slotKeys(d, h);
+    old.forEach(([key, b]) => {
+      let i = Math.floor((minOfKey(key) - h * 60) / (60 / n));
+      while (i < ks.length && d.boxes[ks[i]]) i++;
+      if (i < ks.length) d.boxes[ks[i]] = b;
+      else { bumped.push(b.text); if (b.pi == null && !d.dump.some(x => x.text === b.text)) d.dump.push({ id: rid(), text: b.text }); }
+    });
+  });
+  if (bumped.length) toast(`Only one box fits now. “${bumped[0]}”${bumped.length > 1 ? ` and ${bumped.length - 1} more` : ""} went back to the brain dump.`);
 }
 function placeNowLine() {
   if (S.view !== "day" || S.date !== todayKey()) return;
@@ -623,11 +810,11 @@ function renderMonth() {
     const d = hasDay(k) ? getDay(k) : null; const sm = d ? summarize(d) : null;
     const pr = d ? d.prio.filter(p => p.text.trim()) : [];
     let bar = "";
-    if (sm && sm.planned) { const n = Math.min(sm.planned, 12); for (let j = 0; j < n; j++) bar += `<i class="${j < sm.done ? "d" : "f"}"></i>`; }
+    if (sm && sm.planned) { const n = Math.min(Math.ceil(sm.plannedMin / 60), 12), dn = Math.round(sm.doneMin / 60); for (let j = 0; j < n; j++) bar += `<i class="${j < dn ? "d" : "f"}"></i>`; }
     html += `<button class="dcell ${k.slice(0, 7) !== m ? "out" : ""} ${k === tk ? "today" : ""}" id="dc-${k}" data-act="open-day" data-k="${k}" aria-label="${dd.toDateString()}">
       <span class="dn"><span>${dd.getDate()}</span>${d && d.finished ? `<span class="fin" title="Finished">✓</span>` : ""}</span>
       ${pr.slice(0, 3).map(p => `<span class="dp ${p.done ? "done" : ""}">${esc(p.text)}</span>`).join("")}
-      ${sm && sm.planned ? `<span class="dcount">${sm.done}/${sm.planned}h done</span>` : ""}
+      ${sm && sm.planned ? `<span class="dcount">${fmtDur(sm.doneMin)}/${fmtDur(sm.plannedMin)} done</span>` : ""}
       <span class="dbar">${bar}</span></button>`;
   }
   const wd = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(w => `<div>${w}</div>`).join("");
@@ -649,7 +836,7 @@ function srcText(src) {
 function place(src, h) {
   const k = S.date; const d0 = getDay(k);
   if (d0.finished) { toast("This day is finished. Reopen it to make changes."); return; }
-  if (src.from === "box" && +src.h === +h) { S.placing = null; render(); return; }
+  if (src.from === "box" && String(src.h) === String(h)) { S.placing = null; render(); return; }
   let parkItem = null; let bumped = null;
   if (src.from === "park") { parkItem = getPark().items.find(x => x.id === src.id); if (!parkItem) return; }
   mutateDay(k, d => {
@@ -664,7 +851,7 @@ function place(src, h) {
   }, { silent: true });
   if (parkItem) mutatePark(p => { p.items = p.items.filter(x => x.id !== src.id); }, { silent: true });
   S.placing = null; render();
-  if (src.from === "box" && getDay(k).boxes[src.h]) toast("Swapped the two hours.");
+  if (src.from === "box" && getDay(k).boxes[src.h]) toast("Swapped the two boxes.");
   else if (bumped) toast(`“${bumped}” went back to the brain dump.`);
 }
 function cycleStatus(h) {
@@ -677,7 +864,7 @@ document.addEventListener("click", e => {
   const act = t.dataset.act, k = S.date;
   const ro = S.view === "day" && getDay(k).finished;
   switch (act) {
-    case "view": S.view = t.dataset.v; S.placing = null; render(); break;
+    case "view": S.view = t.dataset.v; S.placing = null; if (S.mode !== "setup") S.showSetup = false; render(); break;
     case "nav": S.placing = null;
       if (S.view === "day") S.date = addDays(S.date, +t.dataset.d);
       else { const d = parseKey(S.date); d.setDate(1); d.setMonth(d.getMonth() + +t.dataset.d); S.date = keyOf(d); }
@@ -693,9 +880,10 @@ document.addEventListener("click", e => {
       if (S.placing && window.matchMedia("(max-width: 820px)").matches) $("#hours")?.scrollIntoView({ behavior: "smooth", block: "start" });
       break; }
     case "cancel-place": S.placing = null; render(); break;
-    case "cycle": e.stopPropagation(); if (ro) { toast("This day is finished. Reopen it to make changes."); break; } cycleStatus(+t.dataset.h); break;
+    case "cycle": e.stopPropagation(); if (ro) { toast("This day is finished. Reopen it to make changes."); break; } cycleStatus(t.dataset.h); break;
+    case "split": if (ro) { toast("This day is finished. Reopen it to make changes."); break; } setSplit(+t.dataset.h); break;
     case "box": {
-      const h = +t.dataset.h;
+      const h = t.dataset.h;
       if (S.placing) { place(S.placing, h); break; }
       if (ro) { if (getDay(k).boxes[h]) toast("This day is finished. Reopen it to make changes."); break; }
       openBoxEditor(h); break; }
@@ -713,7 +901,7 @@ document.addEventListener("click", e => {
       mutatePark(p => { p.items = p.items.filter(x => x.id !== it.id); }, { silent: true });
       mutateDay(k, d => { d.dump.push({ id: rid(), text: it.text }); }); toast("Added to this day’s brain dump."); break; }
     case "ext": {
-      const d0 = getDay(k); const filled = Object.keys(d0.boxes).map(Number);
+      const d0 = getDay(k); const filled = Object.keys(d0.boxes).map(hourOfKey);
       const s = Math.min(d0.start, ...filled), en = Math.max(d0.end, ...filled.map(n => n + 1));
       mutateDay(k, d => {
         if (t.dataset.w === "up") d.start = Math.max(0, s - 1);
@@ -722,10 +910,15 @@ document.addEventListener("click", e => {
         if (t.dataset.w === "down-hide") d.end = en - 1;
       }); break; }
     case "finish": openFinish(); break;
-    case "settings": e.preventDefault(); S.prevMode = S.mode === "setup" ? S.prevMode : S.mode; S.mode = "setup"; S.placing = null; render(); window.scrollTo(0, 0); break;
-    case "setup-back": S.mode = S.prevMode || "gh"; render(); break;
-    case "use-local": lsSet(CFG_KEY, { mode: "local" }); S.mode = "local"; setSync("local", "This device only"); setBanner("Sync is off, so these plans are saved on this device only. <a href=\"#\" data-act=\"settings\">Connect GitHub</a> to sync."); render(); break;
-    case "disconnect": lsSet(CFG_KEY, null); lsSet(LS_KEY, null); S.docs = {}; Store.sha = null; S.mode = "setup"; setSync("local", "Not connected"); render(); toast("This device is disconnected and its copy of your plans was removed."); break;
+    case "settings": e.preventDefault(); S.showSetup = true; S.placing = null; render(); window.scrollTo(0, 0); break;
+    case "setup-back": S.showSetup = false; render(); break;
+    case "use-local": lsSet(CFG_KEY, { mode: "local" }); S.mode = "local"; S.showSetup = false; setSync("local", "This device only"); setBanner("Sync is off, so these plans are saved on this device only. <a href=\"#\" data-act=\"settings\">Connect GitHub</a> to sync."); render(); break;
+    case "disconnect": lsSet(CFG_KEY, null); lsSet(LS_KEY, null); S.docs = {}; Store.sha = null; GH.cfg = null; Store.dirty.clear(); S.mode = "setup"; S.showSetup = false; setSync("local", "Logged out"); render(); toast("Logged out. This device’s copy of your plans was removed."); break;
+    case "copy-vault": {
+      const ta = $("#vault-text"); const done = () => toast("Copied.");
+      const fallback = () => { ta.focus(); ta.select(); toast("Text selected. Press Cmd+C to copy."); };
+      try { navigator.clipboard.writeText(ta.value).then(done, fallback); } catch (err) { fallback(); }
+      break; }
     case "reopen": mutateDay(k, d => { d.finished = false; }); toast("Day reopened. Finish it again when you’re done."); break;
   }
 });
@@ -736,6 +929,8 @@ document.addEventListener("keydown", e => {
 document.addEventListener("submit", e => {
   const f = e.target.closest("[data-form]"); if (!f) return; e.preventDefault();
   if (f.dataset.form === "setup") { connectSetup(); return; }
+  if (f.dataset.form === "login") { loginSubmit(); return; }
+  if (f.dataset.form === "setpw") { setPassword(); return; }
   const inp = f.querySelector("input"); const text = inp.value.trim(); if (!text) return;
   if (f.dataset.form === "dump") mutateDay(S.date, d => { d.dump.push({ id: rid(), text }); });
   else mutatePark(p => { p.items.push({ id: rid(), text }); });
@@ -767,7 +962,7 @@ document.addEventListener("dragover", e => {
 });
 document.addEventListener("drop", e => {
   const c = e.target.closest("[data-drop]"); if (!c || !dragSrc) return; e.preventDefault();
-  const src = dragSrc; dragSrc = null; place(src, +c.dataset.drop);
+  const src = dragSrc; dragSrc = null; place(src, c.dataset.drop);
 });
 
 // ---------- modals ----------
@@ -783,11 +978,11 @@ function openModal(html, onClick) {
 
 function openBoxEditor(h) {
   const k = S.date, d = getDay(k), b = d.boxes[h] ? clone(d.boxes[h]) : { text: "", tag: "", status: "planned" };
-  const isNew = !d.boxes[h];
+  const isNew = !d.boxes[h], len = lenOfKey(d, h), nk = nextSlot(d, h);
   const tagChips = () => TAGS.map(([v, n]) => `<button class="chip tag-chip ${v ? "tg-" + v : ""}" data-m="tag" data-v="${v}" aria-pressed="${(b.tag || "") === v}">${n}</button>`).join("");
   const stChips = () => [["planned", "Planned"], ["done", "Done"], ["partial", "Partly done"], ["skipped", "Skipped"]].map(([v, n]) => `<button class="chip s-${v}" data-m="st" data-v="${v}" aria-pressed="${(b.status || "planned") === v}">${n}</button>`).join("");
   const ov = openModal(`
-    <header><span class="eyebrow">${hourShort(h)} – ${hourShort((h + 1) % 24)}</span><h3>${isNew ? "Box this hour" : "Edit this hour"}</h3></header>
+    <header><span class="eyebrow">${slotRange(d, h)}</span><h3>${isNew ? (len === 60 ? "Box this hour" : `Box these ${len} minutes`) : "Edit this box"}</h3></header>
     <div class="body">
       <div class="field"><label for="be-text">What will you do?</label><input type="text" id="be-text" value="${esc(b.text)}" maxlength="140" placeholder="One focused activity"></div>
       <div class="field"><span class="lbl">Tag</span><div class="chips" id="be-tags">${tagChips()}</div></div>
@@ -795,7 +990,7 @@ function openBoxEditor(h) {
     </div>
     <footer>
       ${isNew ? "" : `<div class="left">
-        <button class="btn ghost" data-m="next" id="be-next" ${h >= 23 || d.boxes[h + 1] ? "disabled" : ""} title="${d.boxes[h + 1] ? "The next hour is already booked" : ""}">Continue into next hour</button>
+        <button class="btn ghost" data-m="next" id="be-next" ${!nk || d.boxes[nk] ? "disabled" : ""} title="${nk && d.boxes[nk] ? "The next box is already booked" : ""}">${nk ? `Continue into ${timeLabel(minOfKey(nk))}` : "Continue into next box"}</button>
         <button class="btn ghost" data-m="move" id="be-move">Move…</button>
         <button class="btn ghost" data-m="unbox" id="be-unbox">Back to brain dump</button>
         <button class="btn ghost" data-m="clear" id="be-clear">Delete</button></div>`}
@@ -813,8 +1008,9 @@ function openBoxEditor(h) {
       }
       if (m === "next") {
         const text = b.text.trim(); if (!text) return;
-        mutateDay(k, dd => { dd.boxes[h] = Object.assign({}, b, { text }); dd.boxes[h + 1] = Object.assign({}, b, { text, status: "planned" }); if (dd.end < h + 2) dd.end = h + 2; }, { silent: true });
-        closeModal(); toast(`Continued into ${hourLabel(h + 1)}.`);
+        if (!nk) return;
+        mutateDay(k, dd => { dd.boxes[h] = Object.assign({}, b, { text }); dd.boxes[nk] = Object.assign({}, b, { text, status: "planned" }); if (dd.end < hourOfKey(nk) + 1) dd.end = hourOfKey(nk) + 1; }, { silent: true });
+        closeModal(); toast(`Continued into ${timeLabel(minOfKey(nk))}.`);
       }
       if (m === "move") { $("#modal-root").innerHTML = ""; S.placing = { from: "box", h, text: d.boxes[h].text }; render(); }
       if (m === "unbox") { mutateDay(k, dd => { const x = dd.boxes[h]; delete dd.boxes[h]; if (x.pi == null) dd.dump.push({ id: rid(), text: x.text }); }, { silent: true }); closeModal(); }
@@ -828,7 +1024,7 @@ function openFinish() {
   const k = S.date, d = getDay(k), tomorrow = addDays(k, 1);
   const st = {}; Object.entries(d.boxes).forEach(([h, b]) => st[h] = b.status || "planned");
   const dest = {}; const refl = { well: "", blocked: "", change: "", energy: 0 };
-  const hrs = Object.keys(d.boxes).map(Number).sort((a, b) => a - b);
+  const hrs = sortedKeys(d);
   const leftovers = () => {
     const L = [];
     d.prio.forEach((p, i) => { if (p.text.trim() && !p.done) L.push({ key: "p" + i, text: p.text.trim(), kind: "Priority", def: "tomorrow" }); });
@@ -836,10 +1032,10 @@ function openFinish() {
     d.dump.forEach(it => L.push({ key: "d" + it.id, text: it.text, kind: "Brain dump", def: "drop" }));
     const seen = new Set(); return L.filter(x => { const s = x.text.toLowerCase(); if (seen.has(s)) return false; seen.add(s); return true; });
   };
-  const revHTML = () => hrs.length ? hrs.map(h => `<div class="rev-row"><span class="t">${hourLabel(h)}</span><span class="x">${esc(d.boxes[h].text)}</span>
+  const revHTML = () => hrs.length ? hrs.map(h => `<div class="rev-row"><span class="t">${timeLabel(minOfKey(h))}</span><span class="x">${esc(d.boxes[h].text)}</span>
       <div class="chips">${[["done", "Done"], ["partial", "Partly"], ["skipped", "Skipped"]].map(([v, n]) => `<button class="chip s-${v}" data-m="st" data-h="${h}" data-v="${v}" aria-pressed="${st[h] === v}">${n}</button>`).join("")}</div></div>`).join("")
     : `<p class="hint">No hours were boxed today.</p>`;
-  const leftHTML = () => { const L = leftovers(); return L.length ? L.map(x => { const v = dest[x.key] || x.def; return `<div class="rev-row"><span class="t">${esc({ "Priority": "Priority", "Skipped hour": "Hour", "Partly done": "Hour", "Brain dump": "Dump" }[x.kind])}</span><span class="x">${esc(x.text)}</span>
+  const leftHTML = () => { const L = leftovers(); return L.length ? L.map(x => { const v = dest[x.key] || x.def; return `<div class="rev-row"><span class="t">${esc({ "Priority": "Priority", "Skipped hour": "Box", "Partly done": "Box", "Brain dump": "Dump" }[x.kind])}</span><span class="x">${esc(x.text)}</span>
       <div class="chips">${[["tomorrow", "Tomorrow"], ["park", "Parking lot"], ["drop", "Let go"]].map(([dv, n]) => `<button class="chip" data-m="dest" data-k="${esc(x.key)}" data-v="${dv}" aria-pressed="${v === dv}">${n}</button>`).join("")}</div></div>`; }).join("")
     : `<p class="hint">Nothing left over. Nice.</p>`; };
   const energyHTML = () => [1, 2, 3, 4, 5].map(n => `<button class="chip" data-m="energy" data-v="${n}" aria-pressed="${refl.energy === n}">${n}</button>`).join("");

@@ -1,6 +1,6 @@
 # Hourbox
 
-A simple 1-hour time-boxing planner: top 3 priorities, brain dump, parking lot, a daily hour grid (one activity per hour), a month view, and a "Finish day" review with optional reflection.
+A simple time-boxing planner: top 3 priorities, brain dump, parking lot, a daily hour grid (one activity per box; any hour can be split into 30- or 15-minute boxes), a month view, and a "Finish day" review with optional reflection.
 
 **Live app:** https://segaldev.github.io/hourbox/
 
@@ -24,6 +24,12 @@ The token is stored only in that device's browser (localStorage) and is sent onl
 3. Open the app, paste the token, and click **Connect**. Do this once per device.
 
 To use it like an app: on a Mac in Safari, **File → Add to Dock**. On an iPhone in Safari, **Share → Add to Home Screen**.
+
+## Password login
+
+After connecting a device with a token, open **Account** (the sliders button) and set a password. The app encrypts your token in the browser (PBKDF2-SHA256, 600,000 rounds, then AES-256-GCM) and gives you a file, `vaults/<username>.json`, to commit to this repo. To log in on another device you only need the username and password. The app downloads that file and decrypts the token locally.
+
+The file is public but encrypted, so the protection is only as strong as your password. Use a long, unique one (a few random words), and let your password manager remember it. When your token expires, create a new one, use **Replace the access token**, then set your password again.
 
 ## Running locally
 
