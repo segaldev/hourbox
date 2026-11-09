@@ -153,6 +153,7 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 .box.empty .plus { font-size: 13px; }
 .box.filled { background: var(--sunk); border: 1.5px solid transparent; cursor: pointer; }
 .box.filled:hover { border-color: var(--line); }
+.box.drop.copying::after { content: "+ Copy"; margin-left: auto; font-size: 12px; font-weight: 600; }
 .box.drop { border-color: var(--accent) !important; background: var(--accent-soft) !important; color: var(--accent) !important; }
 .placing .box { cursor: copy; }
 .box .btxt { flex: 1; min-width: 0; overflow-wrap: anywhere; font-weight: 500; }
@@ -656,7 +657,7 @@ function render() {
   $("#app").innerHTML = S.view === "day" ? renderDay() : renderMonth();
   placeNowLine();
   if (fid) { const el = document.getElementById(fid); if (el) { el.focus(); try { if (ss != null) el.setSelectionRange(ss, se); } catch (e) {} } }
-  const pb = $("#placebar"); pb.hidden = !S.placing; if (S.placing) $("#placetext").textContent = `Tap an hour to schedule “${S.placing.text}”`;
+  const pb = $("#placebar"); pb.hidden = !S.placing; if (S.placing) $("#placetext").textContent = S.placing.copy ? `Tap a box to put a copy of “${S.placing.text}”` : `Tap an hour to schedule “${S.placing.text}”`;
   document.body.classList.toggle("placing", !!S.placing);
 }
 function renderHeader() {
@@ -834,8 +835,8 @@ function srcText(src) {
   if (src.from === "park") return (getPark().items.find(x => x.id === src.id) || {}).text;
   if (src.from === "box") return (d.boxes[src.h] || {}).text;
 }
-function place(src, h) {
-  const k = S.date; const d0 = getDay(k);
+function place(src, h, copy) { // copy: keep the original where it was (Option/Shift-drag, or Duplicate…)
+  const k = S.date; const d0 = getDay(k); copy = !!(copy || src.copy);
   if (d0.finished) { toast("This day is finished. Reopen it to make changes."); return; }
   if (src.from === "box" && String(src.h) === String(h)) { S.placing = null; render(); return; }
   let parkItem = null; let bumped = null; let movedAside = null;
@@ -844,19 +845,22 @@ function place(src, h) {
     const existing = d.boxes[h];
     let box;
     if (src.from === "prio") box = { text: d.prio[src.i].text.trim(), pi: src.i, status: "planned" };
-    else if (src.from === "dump") { const it = d.dump.find(x => x.id === src.id); if (!it) return; box = { text: it.text, status: "planned" }; d.dump = d.dump.filter(x => x.id !== src.id); }
+    else if (src.from === "dump") { const it = d.dump.find(x => x.id === src.id); if (!it) return; box = { text: it.text, status: "planned" }; if (!copy) d.dump = d.dump.filter(x => x.id !== src.id); }
     else if (src.from === "park") box = { text: parkItem.text, status: "planned" };
+    else if (src.from === "box" && copy) { if (!d.boxes[src.h]) return; box = Object.assign(clone(d.boxes[src.h]), { status: "planned" }); }
     else if (src.from === "box") { box = d.boxes[src.h]; delete d.boxes[src.h]; if (existing) d.boxes[src.h] = existing; }
-    if (existing && src.from !== "box") {
+    if (existing && (src.from !== "box" || copy)) {
       const fk = existing.flex ? nearestFree(d, h) : null;
       if (fk) { d.boxes[fk] = existing; movedAside = [existing.text, fk]; }
       else { bumped = existing.text; if (existing.pi == null) d.dump.push({ id: rid(), text: existing.text }); }
     }
     d.boxes[h] = box;
   }, { silent: true });
-  if (parkItem) mutatePark(p => { p.items = p.items.filter(x => x.id !== src.id); }, { silent: true });
+  if (parkItem && !copy) mutatePark(p => { p.items = p.items.filter(x => x.id !== src.id); }, { silent: true });
   S.placing = null; render();
-  if (src.from === "box" && getDay(k).boxes[src.h]) toast("Swapped the two boxes.");
+  const extra = movedAside ? ` “${movedAside[0]}” moved to ${timeLabel(minOfKey(movedAside[1]))}.` : bumped ? ` “${bumped}” went back to the brain dump.` : "";
+  if (copy) toast(`Copied to ${timeLabel(minOfKey(h))}.${extra}`);
+  else if (src.from === "box" && getDay(k).boxes[src.h]) toast("Swapped the two boxes.");
   else if (movedAside) toast(`“${movedAside[0]}” moved to ${timeLabel(minOfKey(movedAside[1]))}.`);
   else if (bumped) toast(`“${bumped}” went back to the brain dump.`);
 }
@@ -963,18 +967,20 @@ $("#datejump").addEventListener("change", e => { if (e.target.value) { S.date = 
 let dragSrc = null;
 document.addEventListener("dragstart", e => {
   const el = e.target.closest("[data-drag]"); if (!el) return;
-  dragSrc = JSON.parse(el.dataset.drag); e.dataTransfer.effectAllowed = "move";
+  dragSrc = JSON.parse(el.dataset.drag); e.dataTransfer.effectAllowed = "copyMove";
   try { e.dataTransfer.setData("text/plain", srcText(dragSrc) || ""); } catch (err) {}
 });
-document.addEventListener("dragend", () => { dragSrc = null; document.querySelectorAll(".drop").forEach(x => x.classList.remove("drop")); });
+document.addEventListener("dragend", () => { dragSrc = null; document.querySelectorAll(".drop").forEach(x => x.classList.remove("drop", "copying")); });
 document.addEventListener("dragover", e => {
   const c = e.target.closest("[data-drop]"); if (!c || !dragSrc) return; e.preventDefault();
-  document.querySelectorAll(".drop").forEach(x => x !== c.firstElementChild && x.classList.remove("drop"));
-  c.firstElementChild.classList.add("drop");
+  const copy = e.altKey || e.shiftKey; // hold Option or Shift to copy instead of move
+  e.dataTransfer.dropEffect = copy ? "copy" : "move";
+  document.querySelectorAll(".drop").forEach(x => x !== c.firstElementChild && x.classList.remove("drop", "copying"));
+  c.firstElementChild.classList.add("drop"); c.firstElementChild.classList.toggle("copying", copy);
 });
 document.addEventListener("drop", e => {
   const c = e.target.closest("[data-drop]"); if (!c || !dragSrc) return; e.preventDefault();
-  const src = dragSrc; dragSrc = null; place(src, c.dataset.drop);
+  const src = dragSrc; dragSrc = null; place(src, c.dataset.drop, e.altKey || e.shiftKey || e.dataTransfer.dropEffect === "copy");
 });
 
 // ---------- modals ----------
@@ -1005,6 +1011,7 @@ function openBoxEditor(h) {
       ${isNew ? "" : `<div class="left">
         <button class="btn ghost" data-m="next" id="be-next" ${!nk || d.boxes[nk] ? "disabled" : ""} title="${nk && d.boxes[nk] ? "The next box is already booked" : ""}">${nk ? `Continue into ${timeLabel(minOfKey(nk))}` : "Continue into next box"}</button>
         <button class="btn ghost" data-m="move" id="be-move">Move…</button>
+        <button class="btn ghost" data-m="dup" id="be-dup" title="Tip: on a Mac, hold Option or Shift while dragging a box to copy it">Duplicate…</button>
         <button class="btn ghost" data-m="unbox" id="be-unbox">${b.rt ? "Remove for today" : "Back to brain dump"}</button>
         <button class="btn ghost" data-m="clear" id="be-clear">Delete</button></div>`}
       <button class="btn" data-m="cancel" id="be-cancel">Cancel</button>
@@ -1026,6 +1033,7 @@ function openBoxEditor(h) {
         closeModal(); toast(`Continued into ${timeLabel(minOfKey(nk))}.`);
       }
       if (m === "move") { $("#modal-root").innerHTML = ""; S.placing = { from: "box", h, text: d.boxes[h].text }; render(); }
+      if (m === "dup") { $("#modal-root").innerHTML = ""; S.placing = { from: "box", h, text: d.boxes[h].text, copy: true }; render(); }
       if (m === "unbox") { mutateDay(k, dd => { const x = dd.boxes[h]; delete dd.boxes[h]; if (x.pi == null && !x.rt) dd.dump.push({ id: rid(), text: x.text }); }, { silent: true }); closeModal(); }
       if (m === "clear") { mutateDay(k, dd => { delete dd.boxes[h]; }, { silent: true }); closeModal(); }
     });
