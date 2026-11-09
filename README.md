@@ -14,8 +14,6 @@ You log in with Google. Plans are stored in Firebase (Firestore) under `users/<y
 
 Firestore also keeps an offline copy on each device, so the app works without a connection and syncs when it's back. Logging out removes that copy.
 
-Moving from the earlier GitHub-repo version: after logging in, Hourbox offers to import your plans from `hourbox-data` (or use Settings → Import from the GitHub version).
-
 To use it like an app: on a Mac in Safari, **File → Add to Dock**. On an iPhone in Safari, **Share → Add to Home Screen**.
 
 ## Running locally
