@@ -434,7 +434,14 @@ const b64dec = s => new TextDecoder().decode(Uint8Array.from(atob(s.replace(/\s/
 // ---------- Firebase ----------
 // This config only identifies the Firebase project; it is public by design.
 // Your data is protected by Firestore security rules: each signed-in user can read and write only users/<their id>/.
-const FIREBASE_CONFIG = null;
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyB_vYCv1o3l986eD0v6fIQ_g4DxGorVpug",
+  authDomain: "hourbox-63cd5.firebaseapp.com",
+  projectId: "hourbox-63cd5",
+  storageBucket: "hourbox-63cd5.firebasestorage.app",
+  messagingSenderId: "587097578398",
+  appId: "1:587097578398:web:84c0f720ad412a31fc548f",
+};
 const FB_VER = "10.14.1";
 const USE_EMULATOR = new URLSearchParams(location.search).has("emulator");
 const FB = { m: null, app: null, auth: null, db: null, user: null };

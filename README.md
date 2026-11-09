@@ -10,22 +10,11 @@ Open **Settings** (the sliders button) to set up boxes every new day starts with
 
 ## Where your data lives
 
-This repository holds only the app's code and is public. Your plans are **not** stored here.
+You log in with Google. Plans are stored in Firebase (Firestore) under `users/<your id>/docs`. The security rules in `firestore.rules` let each signed-in user read and write only their own documents. The Firebase config in `index.html` only identifies the project; it is public by design and grants no access by itself.
 
-They are saved to a JSON file (`hourbox.json`) in a separate **private** repository (`hourbox-data`) in your own GitHub account. Each device connects with a fine-grained access token that:
+Firestore also keeps an offline copy on each device, so the app works without a connection and syncs when it's back. Logging out removes that copy.
 
-- can access only the `hourbox-data` repository, and
-- has only **Contents: Read and write** permission.
-
-The token is stored only in that device's browser (localStorage) and is sent only to `api.github.com`. The app refuses to connect to a data repo that is public.
-
-## Connecting a device
-
-1. Make sure `hourbox-data` exists and is **private**.
-2. Create a token at https://github.com/settings/personal-access-tokens/new
-   - Repository access: *Only select repositories* → `hourbox-data`
-   - Repository permissions → *Contents*: **Read and write**
-3. Open the app, paste the token, and click **Connect**. Do this once per device.
+Moving from the earlier GitHub-repo version: after logging in, Hourbox offers to import your plans from `hourbox-data` (or use Settings → Import from the GitHub version).
 
 To use it like an app: on a Mac in Safari, **File → Add to Dock**. On an iPhone in Safari, **Share → Add to Home Screen**.
 
