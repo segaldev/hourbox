@@ -1,3 +1,4 @@
+import { closeZen, openZen, zenOpen } from "./zen.js";
 import { setQuotesOn } from "./quotes.js";
 import { calSync } from "./calendar.js";
 import { nearestFree, setSplit } from "./day.js";
@@ -132,6 +133,8 @@ document.addEventListener("click", e => {
     case "google": googleSignIn(); break;
     case "logout": logout(); break;
     case "appearance": setAppearance(t.dataset.v); syncThemeColor(); render(); break;
+    case "zen": S.dayMenu = false; S.placing = null; render(); openZen(); break;
+    case "zen-exit": closeZen(); break;
     case "quote-on": setQuotesOn(true); break;
     case "quote-off": setQuotesOn(false); break;
     case "notify-on": Notify.enable(); break;
@@ -146,7 +149,8 @@ document.addEventListener("keydown", e => {
   if (e.key === "Escape" && S.dayMenu) { S.dayMenu = false; render(); $("#daymenu-btn")?.focus(); return; }
   if ((e.key === "Enter" || e.key === " ") && e.target.matches(".box[data-act]")) { e.preventDefault(); e.target.click(); }
   if (e.key === "Escape") { // close what's on top, then go back to the day
-    if (modalOpen()) closeModal();
+    if (zenOpen()) closeZen();
+    else if (modalOpen()) closeModal();
     else if (S.placing) { S.placing = null; render(); }
     else if (S.showSetup && S.mode !== "setup") { S.showSetup = false; render(); }
     else if ((S.view === "month" || S.view === "journal") && S.mode !== "setup") { S.view = "day"; render(); }

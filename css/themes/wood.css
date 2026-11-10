@@ -12,6 +12,6 @@
   --desk: #2A1E15; --paper: #2F2722; --surface: #2B241F; --surface-solid: #2B241F; --sunk: #352D27; --ink: #EFE6DA; --muted: #B3A391; --line: #463B33; --accent: #D9B58A; --accent-ink: #22180F; --accent-soft: #43372B; --now: #E68A5C; --done: #A9C08E; --partial: #E0B66E; --skipped: #978A7C; --t-deep: #9DB7D6; --t-meet: #A9C08E; --t-admin: #E0B66E; --t-personal: #D9A0AC;
   --shadow: 0 1px 2px rgba(0,0,0,.35), 0 10px 30px rgba(0,0,0,.3); --overlay: rgba(0,0,0,.55); color-scheme: dark; }
 /* the picture: set here so its path is relative to this file */
-:root[data-style="wood"], :root[data-style="wood"] body, :root[data-style="wood"] .top { background-image: url("../../img/wood-light.webp"); }
-@media (prefers-color-scheme: dark) { :root[data-style="wood"]:not([data-theme="light"]), :root[data-style="wood"]:not([data-theme="light"]) body, :root[data-style="wood"]:not([data-theme="light"]) .top { background-image: url("../../img/wood-dark.webp"); } }
-:root[data-style="wood"][data-theme="dark"], :root[data-style="wood"][data-theme="dark"] body, :root[data-style="wood"][data-theme="dark"] .top { background-image: url("../../img/wood-dark.webp"); }
+:root[data-style="wood"], :root[data-style="wood"] body, :root[data-style="wood"] .top, :root[data-style="wood"] .zen { background-image: url("../../img/wood-light.webp"); }
+@media (prefers-color-scheme: dark) { :root[data-style="wood"]:not([data-theme="light"]), :root[data-style="wood"]:not([data-theme="light"]) body, :root[data-style="wood"]:not([data-theme="light"]) .top, :root[data-style="wood"]:not([data-theme="light"]) .zen { background-image: url("../../img/wood-dark.webp"); } }
+:root[data-style="wood"][data-theme="dark"], :root[data-style="wood"][data-theme="dark"] body, :root[data-style="wood"][data-theme="dark"] .top, :root[data-style="wood"][data-theme="dark"] .zen { background-image: url("../../img/wood-dark.webp"); }

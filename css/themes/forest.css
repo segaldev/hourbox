@@ -12,7 +12,7 @@
   --desk: #121A17; --paper: #16201C; --surface: rgba(22,32,28,.84); --surface-solid: #18221E; --sunk: rgba(34,46,41,.9); --ink: #E1EAE3; --muted: #93A69A; --line: rgba(150,190,165,.14); --accent: #8CC0A0; --accent-ink: #0F1613; --accent-soft: #213229; --now: #E7A866; --done: #8CC0A0; --partial: #D9B26A; --skipped: #76857C; --t-deep: #92B4DA; --t-meet: #8CC0A0; --t-admin: #D9B26A; --t-personal: #D69CB2;
   --shadow: 0 1px 2px rgba(0,0,0,.35), 0 10px 30px rgba(0,0,0,.3); --overlay: rgba(0,0,0,.55); color-scheme: dark; }
 /* the picture: set here so its path is relative to this file */
-:root[data-style="forest"], :root[data-style="forest"] body, :root[data-style="forest"] .top { background-image: url("../../img/forest-light.webp"); }
-@media (prefers-color-scheme: dark) { :root[data-style="forest"]:not([data-theme="light"]), :root[data-style="forest"]:not([data-theme="light"]) body, :root[data-style="forest"]:not([data-theme="light"]) .top { background-image: url("../../img/forest-dark.webp"); } }
-:root[data-style="forest"][data-theme="dark"], :root[data-style="forest"][data-theme="dark"] body, :root[data-style="forest"][data-theme="dark"] .top { background-image: url("../../img/forest-dark.webp"); }
+:root[data-style="forest"], :root[data-style="forest"] body, :root[data-style="forest"] .top, :root[data-style="forest"] .zen { background-image: url("../../img/forest-light.webp"); }
+@media (prefers-color-scheme: dark) { :root[data-style="forest"]:not([data-theme="light"]), :root[data-style="forest"]:not([data-theme="light"]) body, :root[data-style="forest"]:not([data-theme="light"]) .top, :root[data-style="forest"]:not([data-theme="light"]) .zen { background-image: url("../../img/forest-dark.webp"); } }
+:root[data-style="forest"][data-theme="dark"], :root[data-style="forest"][data-theme="dark"] body, :root[data-style="forest"][data-theme="dark"] .top, :root[data-style="forest"][data-theme="dark"] .zen { background-image: url("../../img/forest-dark.webp"); }
 [data-style="forest"] :is(.pane, .a-grid, .cal, .banner, .welcome, .setup, .day > .quote) { -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
