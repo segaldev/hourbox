@@ -8,6 +8,10 @@ A simple time-boxing planner: top 3 priorities, brain dump, parking lot, a daily
 
 Open **Settings** (the sliders button) to set up boxes every new day starts with, such as "6:00 Get ready". Each item has a start time, length, tag, weekdays, and can be marked **Flexible**. Flexible items have a dashed outline. When you drop something on one, it moves to the nearest free time instead of being sent to the brain dump. Days that already exist get an **Add routine** button.
 
+## Notifications
+
+In **Settings → Notifications**, turn on notifications for this device. While Hourbox is open (even in the background), you get a notification when a box ends and the next one starts, with a **Mark done** button for the box that just ended. `sw.js` is a tiny service worker used only to show notifications and handle that button; it doesn't cache anything.
+
 ## Where your data lives
 
 You log in with Google. Plans are stored in Firebase (Firestore) under `users/<your id>/docs`. The security rules in `firestore.rules` let each signed-in user read and write only their own documents. The Firebase config in `index.html` only identifies the project; it is public by design and grants no access by itself.
