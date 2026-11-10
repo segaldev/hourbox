@@ -10,11 +10,11 @@ Open **Settings** (the sliders button) to set up boxes every new day starts with
 
 ## Google Calendar (read-only)
 
-On any day you're planning, **Sync calendar** reads that day's events from your primary Google Calendar and shows a preview before changing anything. Hourbox never changes your calendar. Timed events become boxes (snapped to 15 minutes, tagged Meetings); flexible boxes move aside; boxes you planned yourself are never overwritten; events that don't fit can go to the brain dump; all-day and declined events are skipped. Syncing again updates only the calendar boxes and keeps their status.
+On any day you're planning, **Sync calendar** reads that day's events from the Google calendars you pick in its preview (your choice is saved in your account) and shows a preview before changing anything. Hourbox never changes your calendar. Timed events become boxes (snapped to 15 minutes, tagged Meetings); flexible boxes move aside; boxes you planned yourself are never overwritten; events that don't fit can go to the brain dump; all-day and declined events are skipped. Syncing again updates only the calendar boxes and keeps their status.
 
 Write-back (moves, renames, adding your own boxes) is built but switched off: set `CAL_WRITE = true` in `index.html` and add the `calendar.events` scope to turn it on.
 
-Setup in the Firebase project's Google Cloud: enable the Google Calendar API, add the `calendar.events.readonly` scope to the OAuth consent screen, and (in Testing mode) add yourself as a test user.
+Setup in the Firebase project's Google Cloud: enable the Google Calendar API, add the `calendar.events.readonly` and `calendar.calendarlist.readonly` scopes to the OAuth consent screen, and (in Testing mode) add yourself as a test user.
 
 ## Notifications
 
