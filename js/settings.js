@@ -57,12 +57,12 @@ function renderAuth() {
   return `<section class="welcome">
     <div class="welcome-brand"><span class="brand-mark big" aria-hidden="true"></span><h1>Hourbox</h1></div>
     <p class="welcome-lead">Plan your day in boxes of time.</p>
-    <p class="welcome-text">Pick your top 3 priorities, empty your head into a brain dump, then give each task its own hour, or half or quarter hour. Boxes never overlap, so your plan fits the day you actually have. At night, finish the day with a short review.</p>
+    <p class="welcome-text">Time boxing gives every task a start, an end and a place in your day. Pick your top 3 priorities, empty your head into a brain dump, then box the work into hours, half hours or quarter hours. Boxes never overlap, so your plan fits the time you really have.</p>
     <div class="welcome-demo" aria-hidden="true">
-      <div><span>6:00</span><i>Get ready</i></div>
-      <div><span>7:00</span><i>Kids to school</i></div>
-      <div class="flex"><span>8:00</span><i>Walk</i></div>
-      <div class="done"><span>9:00</span><i>Deep work: Q4 plan</i></div>
+      <div class="done"><span>9:00</span><i>Deep work: draft the proposal</i></div>
+      <div class="half"><span>10:00</span><i>Inbox and messages</i></div>
+      <div class="half flex"><span>10:30</span><i>Break: stretch, refill coffee</i></div>
+      <div><span>11:00</span><i>Focus block: finish the slides</i></div>
     </div>
     <div class="welcome-actions">${action}</div>
     <p class="welcome-foot">Your plans are private to your account and sync between your devices.<br>

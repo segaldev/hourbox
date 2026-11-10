@@ -253,6 +253,7 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 .welcome-demo span { font-family: var(--f-mono); font-size: 12px; color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
 .welcome-demo i { font-style: normal; font-weight: 500; font-size: 14px; padding: 8px 12px; border-radius: var(--r); background: var(--box-bg); border: 1px solid var(--box-border); }
 .welcome-demo .flex i { background: transparent; border: 1.5px dashed var(--muted); }
+.welcome-demo .half i { padding-block: 5px; font-size: 13.5px; }
 .welcome-demo .done i { color: var(--muted); }
 .welcome-demo .done i::before { content: "✓"; display: inline-grid; place-items: center; width: 16px; height: 16px; border: 1.5px solid var(--done); border-radius: 50%; color: var(--done); font-size: 10px; font-weight: 700; margin-right: 8px; vertical-align: -2px; }
 .welcome-actions { display: grid; justify-items: start; gap: 6px; }
