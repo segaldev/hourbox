@@ -20,6 +20,10 @@ Setup in the Firebase project's Google Cloud: enable the Google Calendar API, ad
 
 The **Day options ▾** menu on each day holds **Finish day**, **Journal** (a free-writing space saved with that day), **Add routine** when needed, and **Clear day** (deletes everything on that day after a confirmation, with Undo). On a finished day it offers Reopen day and Edit reflection. The journal icon in the top bar shows all journal entries, newest first, with Edit and Open day links.
 
+## Quote of the day
+
+Turn it on in Settings to see a short Stoic or Zen quote at the top of the planner, a different one each day. The quotes are kept in `js/quotes.js`, so they work offline.
+
 ## Notifications
 
 In **Settings → Notifications**, turn on notifications for this device. While Hourbox is open (even in the background), you get a notification when a box ends and the next one starts, with a **Mark done** button for the box that just ended. `sw.js` is a tiny service worker used only to show notifications and handle that button; it doesn't cache anything.
@@ -59,6 +63,7 @@ python3 -m http.server 8000
 | `js/settings.js` | Settings, Look panel, sign-in |
 | `js/calendar.js` | Google Calendar (read-only) |
 | `js/notify.js` | Box notifications |
+| `js/quotes.js` | Quote of the day |
 | `js/ui.js` | Toasts, banner, save status |
 
 To add a style: add `css/themes/<name>.css`, link it in `index.html`, and add it to `STYLES` in `js/settings.js` (and its fonts to `js/boot.js`).

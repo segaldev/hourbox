@@ -1,3 +1,4 @@
+import { renderQuoteSettings } from "./quotes.js";
 import { Notify } from "./notify.js";
 import { S, getDay, getRoutine } from "./state.js";
 import { FB, Store } from "./store.js";
@@ -126,7 +127,7 @@ function renderSetup() {
     <p>You’re using Hourbox without an account, so plans stay on this device.</p>
     <div class="setup-actions"><button class="btn primary" type="button" data-act="to-login" id="su-login">Log in or create an account</button></div>
   </section>`;
-  return renderRoutine() + renderCalendarSettings() + renderNotify() + account;
+  return renderRoutine() + renderCalendarSettings() + renderNotify() + renderQuoteSettings() + account;
 }
 async function googleSignIn() {
   const msg = $("#au-msg"), btn = $("#au-google");

@@ -1,3 +1,4 @@
+import { setQuotesOn } from "./quotes.js";
 import { calSync } from "./calendar.js";
 import { nearestFree, setSplit } from "./day.js";
 import { askJournal, closeModal, modalOpen, openBoxEditor, openClearDay, openFinish, openJournal } from "./modals.js";
@@ -131,6 +132,8 @@ document.addEventListener("click", e => {
     case "google": googleSignIn(); break;
     case "logout": logout(); break;
     case "appearance": setAppearance(t.dataset.v); syncThemeColor(); render(); break;
+    case "quote-on": setQuotesOn(true); break;
+    case "quote-off": setQuotesOn(false); break;
     case "notify-on": Notify.enable(); break;
     case "notify-off": Notify.disable(); break;
     case "notify-test": { const d = getDay(todayKey()), nk = Notify.nextBoxAfter(d, new Date().getHours() * 60 + new Date().getMinutes());
