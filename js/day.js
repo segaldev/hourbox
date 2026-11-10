@@ -59,10 +59,10 @@ function renderDay() {
   const quote = renderQuote(k);
   return `<div class="day${quote ? " has-quote" : ""}">${quote}
     <section class="pane a-prio"><div class="pane-head"><h2>Top 3 priorities</h2><span class="hint">Box them first</span></div><ol class="prio-list">${prio}</ol></section>
-    <section class="pane a-dump"><div class="pane-head"><h2>Brain dump</h2><span class="hint">This day only</span></div>
+    <section class="pane a-dump"><div class="pane-head"><h2>Brain dump${countBadge(d.dump)}</h2><span class="hint">This day only</span></div>
       ${ro ? "" : `<form class="add" data-form="dump"><input type="text" id="add-dump" placeholder="Add a thought or task, then Enter" maxlength="200" autocomplete="off"><button class="btn" type="submit">Add</button></form>`}
       <ul class="items">${dump}</ul></section>
-    <section class="pane a-park"><div class="pane-head"><h2>Parking lot</h2><span class="hint">Kept across days</span></div>
+    <section class="pane a-park"><div class="pane-head"><h2>Parking lot${countBadge(getPark().items)}</h2><span class="hint">Kept across days</span></div>
       <form class="add" data-form="park"><input type="text" id="add-park" placeholder="Not today, but don’t lose it" maxlength="200" autocomplete="off"><button class="btn" type="submit">Add</button></form>
       <ul class="items">${park}</ul></section>
     <section class="a-grid ${ro ? "readonly" : ""}">
@@ -82,11 +82,13 @@ function renderDay() {
       ${summary}${topExt}<div class="hours" id="hours">${hours}</div>${botExt}
     </section></div>`;
 }
+const countBadge = items => { const n = items.filter(it => !it.done).length; return n ? ` <span class="count" title="${n} to do">${n}</span>` : ""; };
 function itemRow(it, from, ro) {
   const picked = S.placing && S.placing.from === from && S.placing.id === it.id;
   const other = from === "dump" ? `<button class="mini" data-act="to-park" data-id="${it.id}" title="Move to parking lot" aria-label="Move to parking lot">${ICON.park}</button>`
     : `<button class="mini" data-act="to-dump" data-id="${it.id}" title="Bring into this day’s brain dump" aria-label="Bring into today">${ICON.today}</button>`;
-  return `<li class="item ${picked ? "picked" : ""}" ${ro ? "" : `draggable="true" data-drag='${esc(JSON.stringify({ from, id: it.id }))}'`}>
+  return `<li class="item ${picked ? "picked" : ""} ${it.done ? "done" : ""}" ${ro ? "" : `draggable="true" data-drag='${esc(JSON.stringify({ from, id: it.id }))}'`}>
+    <input type="checkbox" class="check" data-act="item-done" data-from="${from}" data-id="${it.id}" ${it.done ? "checked" : ""} ${ro ? "disabled" : ""} aria-label="Done: ${esc(it.text)}">
     <span class="txt">${esc(it.text)}</span>
     ${ro ? "" : `<button class="mini" data-act="pick" data-from="${from}" data-id="${it.id}" title="Schedule into an hour" aria-label="Schedule">${ICON.clock}</button>${other}
     <button class="mini" data-act="del-item" data-from="${from}" data-id="${it.id}" title="Delete" aria-label="Delete">${ICON.x}</button>`}</li>`;

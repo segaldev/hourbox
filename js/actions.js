@@ -72,6 +72,11 @@ document.addEventListener("click", e => {
       render(); break;
     case "today": S.date = todayKey(); S.placing = null; render(); break;
     case "open-day": S.date = t.dataset.k; S.view = "day"; render(); window.scrollTo(0, 0); break;
+    case "item-done": {
+      const done = t.checked, id = t.dataset.id;
+      if (t.dataset.from === "dump") mutateDay(k, d => { const it = d.dump.find(x => x.id === id); if (it) it.done = done; });
+      else mutatePark(p => { const it = p.items.find(x => x.id === id); if (it) it.done = done; });
+      break; }
     case "prio-done": mutateDay(k, d => { d.prio[+t.dataset.i].done = t.checked; }); break;
     case "pick": {
       const src = t.dataset.from === "prio" ? { from: "prio", i: +t.dataset.i } : { from: t.dataset.from, id: t.dataset.id };
