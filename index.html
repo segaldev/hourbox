@@ -935,7 +935,7 @@ function renderDay() {
     <section class="a-grid ${ro ? "readonly" : ""}">
       <div class="gridhead"><div><h2>${esc(dl)}</h2><div class="meta">${sm.plannedMin ? fmtDur(sm.plannedMin) : "0h"} of ${end - start}h boxed${sm.doneMin ? ` · ${fmtDur(sm.doneMin)} done` : ""}${ro ? " · Finished" : ""}</div></div>
         <div class="headbtns daymenu-wrap">
-          <button class="btn ${ro ? "" : "primary"}" id="daymenu-btn" data-act="day-menu" aria-haspopup="menu" aria-expanded="${!!S.dayMenu}">${ro ? "Day finished" : "Finish day"}<span class="chev" aria-hidden="true">▾</span></button>
+          <button class="btn" id="daymenu-btn" data-act="day-menu" aria-haspopup="menu" aria-expanded="${!!S.dayMenu}">${ro ? "Day finished" : "Day options"}<span class="chev" aria-hidden="true">▾</span></button>
           ${S.dayMenu ? `<div class="daymenu" role="menu" id="daymenu">
             ${ro ? `<button role="menuitem" class="mi" id="mi-reopen" data-act="reopen">Reopen day</button>
                     <button role="menuitem" class="mi" id="mi-refl" data-act="edit-reflection">${hasRefl ? "Edit reflection" : "Add reflection"}</button>`
@@ -1168,7 +1168,12 @@ document.addEventListener("click", e => { if (S.dayMenu && !e.target.closest(".d
 document.addEventListener("keydown", e => {
   if (e.key === "Escape" && S.dayMenu) { S.dayMenu = false; render(); $("#daymenu-btn")?.focus(); return; }
   if ((e.key === "Enter" || e.key === " ") && e.target.matches(".box[data-act]")) { e.preventDefault(); e.target.click(); }
-  if (e.key === "Escape") { if (modalOpen()) closeModal(); else if (S.placing) { S.placing = null; render(); } }
+  if (e.key === "Escape") { // close what's on top, then go back to the day
+    if (modalOpen()) closeModal();
+    else if (S.placing) { S.placing = null; render(); }
+    else if (S.showSetup && S.mode !== "setup") { S.showSetup = false; render(); }
+    else if (S.view === "month" && S.mode !== "setup") { S.view = "day"; render(); }
+  }
 });
 document.addEventListener("submit", e => {
   const f = e.target.closest("[data-form]"); if (!f) return; e.preventDefault();
