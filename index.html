@@ -391,6 +391,19 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 .box.filled.flex:hover { border-color: var(--ink); }
 .flexmark { flex: none; font-size: 11px; font-family: var(--f-mono); color: var(--muted); }
 .headbtns { display: flex; gap: 8px; flex-wrap: wrap; }
+.daymenu-wrap { position: relative; }
+.chev { margin-left: 8px; font-size: 11px; opacity: .8; }
+.daymenu { position: absolute; right: 0; top: calc(100% + 6px); z-index: 30; min-width: 250px; background: var(--surface-solid); border: 1px solid var(--line); border-radius: var(--r); box-shadow: 0 10px 30px rgba(0,0,0,.15); padding: 6px; display: grid; gap: 2px; }
+.daymenu hr { border: 0; border-top: 1px solid var(--line); margin: 4px 2px; }
+.mi { display: grid; text-align: left; gap: 1px; border: 0; background: transparent; color: var(--ink); padding: 8px 10px; border-radius: var(--r-s); font-weight: 500; }
+.mi span { font-size: 12px; font-weight: 400; color: var(--muted); }
+.mi:hover, .mi:focus-visible { background: var(--sunk); outline: none; }
+.mi.danger { color: var(--now); }
+.btn.danger { background: var(--now); border-color: var(--now); color: var(--surface-solid); }
+.btn.danger:hover { filter: brightness(1.05); }
+textarea.journal { width: 100%; min-height: 46vh; resize: vertical; border: 1px solid var(--line); background: var(--paper); border-radius: var(--r); padding: 14px 16px; font: inherit; font-size: 16px; line-height: 1.65; color: var(--ink); }
+textarea.journal:focus { outline: none; border-color: var(--ink); background: var(--surface-solid); }
+.toast-btn { border: 0; background: none; color: var(--accent); font-weight: 700; margin-left: 6px; padding: 0 2px; text-decoration: underline; }
 .btnicon { display: inline-grid; place-items: center; margin-right: 6px; vertical-align: -3px; }
 .btnicon svg, .calmark svg, .calnote svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .calmark { flex: none; display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
@@ -794,7 +807,7 @@ function renderSetup() {
     <p>You’re using Hourbox without an account, so plans stay on this device.</p>
     <div class="setup-actions"><button class="btn primary" type="button" data-act="to-login" id="su-login">Log in or create an account</button></div>
   </section>`;
-  return renderRoutine() + renderNotify() + account;
+  return renderRoutine() + renderCalendarSettings() + renderNotify() + account;
 }
 async function googleSignIn() {
   const msg = $("#au-msg"), btn = $("#au-google");
@@ -820,7 +833,11 @@ async function logout() {
 function setSync(s, text) { const el = $("#sync"); el.dataset.s = s; el.textContent = text; }
 function setBanner(html) { $("#banner").innerHTML = html ? `<div class="banner">${html}</div>` : ""; }
 let toastT;
-function toast(msg) { const t = $("#toast"); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 2600); }
+function toast(msg, action) { // action: {label, act} shows a button, e.g. Undo
+  const t = $("#toast"); t.textContent = msg;
+  if (action) { const b = document.createElement("button"); b.className = "toast-btn"; b.dataset.act = action.act; b.textContent = action.label; t.append(" ", b); }
+  t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, action ? 8000 : 2600);
+}
 
 // ---------- rendering ----------
 function render() {
@@ -917,8 +934,18 @@ function renderDay() {
       <ul class="items">${park}</ul></section>
     <section class="a-grid ${ro ? "readonly" : ""}">
       <div class="gridhead"><div><h2>${esc(dl)}</h2><div class="meta">${sm.plannedMin ? fmtDur(sm.plannedMin) : "0h"} of ${end - start}h boxed${sm.doneMin ? ` · ${fmtDur(sm.doneMin)} done` : ""}${ro ? " · Finished" : ""}</div></div>
-        <div class="headbtns">${!ro && S.mode === "fb" ? `<button class="btn" id="cal-sync" data-act="cal-sync" title="Bring this day’s events from Google Calendar into your boxes"><span class="btnicon">${ICON.cal}</span>Sync calendar</button>` : ""}${!ro && !d.rtApplied && routineFor(k).some(it => !Object.values(d.boxes).some(b => b.rt === it.id)) ? `<button class="btn" id="add-routine" data-act="add-routine">Add routine</button>` : ""}
-        ${ro ? `<button class="btn" id="reopen" data-act="reopen">Reopen day</button>` : `<button class="btn primary" id="finish" data-act="finish">Finish day</button>`}</div></div>
+        <div class="headbtns daymenu-wrap">
+          <button class="btn ${ro ? "" : "primary"}" id="daymenu-btn" data-act="day-menu" aria-haspopup="menu" aria-expanded="${!!S.dayMenu}">${ro ? "Day finished" : "Finish day"}<span class="chev" aria-hidden="true">▾</span></button>
+          ${S.dayMenu ? `<div class="daymenu" role="menu" id="daymenu">
+            ${ro ? `<button role="menuitem" class="mi" id="mi-reopen" data-act="reopen">Reopen day</button>
+                    <button role="menuitem" class="mi" id="mi-refl" data-act="edit-reflection">${hasRefl ? "Edit reflection" : "Add reflection"}</button>`
+                 : `<button role="menuitem" class="mi" id="mi-finish" data-act="finish">Finish day<span>Review hours, leftovers and reflect</span></button>`}
+            <button role="menuitem" class="mi" id="mi-journal" data-act="journal">Journal${(d.journal || "").trim() ? `<span>${(d.journal.trim().split(/\s+/).length)} words written</span>` : `<span>Write your thoughts for this day</span>`}</button>
+            ${!ro && !d.rtApplied && routineFor(k).some(it => !Object.values(d.boxes).some(b => b.rt === it.id)) ? `<button role="menuitem" class="mi" id="mi-routine" data-act="add-routine">Add routine</button>` : ""}
+            <hr>
+            <button role="menuitem" class="mi danger" id="mi-clear" data-act="clear-day">Clear day<span>Delete everything on this day</span></button>
+          </div>` : ""}
+        </div></div>
       ${summary}${topExt}<div class="hours" id="hours">${hours}</div>${botExt}
     </section></div>`;
 }
@@ -1107,10 +1134,14 @@ document.addEventListener("click", e => {
         if (t.dataset.w === "up-hide") d.start = s + 1;
         if (t.dataset.w === "down-hide") d.end = en - 1;
       }); break; }
-    case "finish": openFinish(); break;
-    case "edit-reflection": openFinish(true); break;
+    case "day-menu": e.stopPropagation(); S.dayMenu = !S.dayMenu; render(); if (S.dayMenu) $("#daymenu .mi")?.focus(); break;
+    case "finish": S.dayMenu = false; render(); openFinish(); break;
+    case "journal": S.dayMenu = false; render(); openJournal(); break;
+    case "clear-day": S.dayMenu = false; render(); openClearDay(); break;
+    case "undo-clear": if (S.undoClear && S.undoClear.k) { const u = S.undoClear; S.undoClear = null; mutate(dayId(u.k), getDay(u.k), d => { Object.keys(d).forEach(x => delete d[x]); Object.assign(d, u.doc); }); $("#toast").hidden = true; toast("Day restored."); } break;
+    case "edit-reflection": S.dayMenu = false; render(); openFinish(true); break;
     case "cal-sync": calSync(); break;
-    case "add-routine": {
+    case "add-routine": { S.dayMenu = false;
       let res; mutateDay(k, d => { res = applyRoutine(d, k); });
       toast(res.added.length ? `Added ${res.added.join(", ")}.${res.skipped.length ? ` Skipped ${res.skipped.join(", ")} (time already taken).` : ""}` : `Nothing added. ${res.skipped.join(", ")} overlap boxes you already have.`);
       break; }
@@ -1130,10 +1161,12 @@ document.addEventListener("click", e => {
     case "notify-off": Notify.disable(); break;
     case "notify-test": { const d = getDay(todayKey()), nk = Notify.nextBoxAfter(d, new Date().getHours() * 60 + new Date().getMinutes());
       Notify.show("Hourbox notifications work", nk ? `Next up: ${d.boxes[nk].text} at ${timeLabel(minOfKey(nk))}.` : "You’ll hear from Hourbox when a box ends.", { tag: "hourbox-test" }); toast("Test sent."); break; }
-    case "reopen": mutateDay(k, d => { d.finished = false; }); toast("Day reopened. Finish it again when you’re done."); break;
+    case "reopen": S.dayMenu = false; mutateDay(k, d => { d.finished = false; }); toast("Day reopened. Finish it again when you’re done."); break;
   }
 });
+document.addEventListener("click", e => { if (S.dayMenu && !e.target.closest(".daymenu-wrap")) { S.dayMenu = false; render(); } }, true);
 document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && S.dayMenu) { S.dayMenu = false; render(); $("#daymenu-btn")?.focus(); return; }
   if ((e.key === "Enter" || e.key === " ") && e.target.matches(".box[data-act]")) { e.preventDefault(); e.target.click(); }
   if (e.key === "Escape") { if (modalOpen()) closeModal(); else if (S.placing) { S.placing = null; render(); } }
 });
@@ -1240,6 +1273,39 @@ function openBoxEditor(h) {
   inp.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); ov.querySelector("#be-save").click(); } });
 }
 
+function openJournal() {
+  const k = S.date, d = getDay(k);
+  let timer = null;
+  const save = () => { const v = $("#jr-text") ? $("#jr-text").value : null; if (v == null) return; mutateDay(k, dd => { dd.journal = v; }, { silent: true }); };
+  const ov = openModal(`
+    <header><span class="eyebrow">${parseKey(k).toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" })}</span><h3>Journal</h3></header>
+    <div class="body">
+      <textarea id="jr-text" class="journal" rows="14" placeholder="What’s on your mind today?" aria-label="Journal for this day">${esc(d.journal || "")}</textarea>
+      <p class="hint" id="jr-state">${(d.journal || "").trim() ? "Saved." : "Saved as you type."}</p>
+    </div>
+    <footer><button class="btn primary" data-m="done" id="jr-done">Done</button></footer>`, btn => { if (btn.dataset.m === "done") { clearTimeout(timer); save(); closeModal(); } });
+  ov.addEventListener("input", e => {
+    if (e.target.id !== "jr-text") return;
+    $("#jr-state").textContent = "Saving…"; clearTimeout(timer);
+    timer = setTimeout(() => { save(); const st = $("#jr-state"); if (st) st.textContent = "Saved."; }, 600);
+  });
+  const ta = $("#jr-text"); ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length);
+}
+function openClearDay() {
+  const k = S.date, label = parseKey(k).toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" });
+  openModal(`
+    <header><span class="eyebrow">${label}</span><h3>Clear this day?</h3></header>
+    <div class="body"><p style="margin:0 0 10px">This deletes everything on this day: boxes, top priorities, brain dump, journal and reflection. Your parking lot, routine and other days aren’t affected.</p></div>
+    <footer><button class="btn" data-m="cancel" id="cd-cancel">Cancel</button><button class="btn danger" data-m="clear" id="cd-clear">Clear day</button></footer>`, btn => {
+      if (btn.dataset.m === "cancel") { closeModal(); return; }
+      if (btn.dataset.m !== "clear") return;
+      const before = clone(getDay(k));
+      mutateDay(k, d => { const b = blankDay(k); Object.keys(d).forEach(x => delete d[x]); Object.assign(d, b, { rtApplied: true }); }, { silent: true });
+      S.undoClear = { k, doc: before };
+      closeModal();
+      toast("Day cleared.", { label: "Undo", act: "undo-clear" });
+    });
+}
 function openFinish(editOnly) { // editOnly: change the reflection of a finished day without touching leftovers
   const k = S.date, d = getDay(k), tomorrow = addDays(k, 1);
   const st = {}; Object.entries(d.boxes).forEach(([h, b]) => st[h] = b.status || "planned");
@@ -1499,13 +1565,13 @@ async function calSync() {
   let token = Cal.cached();
   try {
     if (!token) token = await Cal.authorize(); // opens Google's permission popup straight from the tap
-    if (btn) { btn.disabled = true; btn.lastChild.textContent = "Syncing…"; }
+    if (btn) { btn.disabled = true; btn.lastElementChild.textContent = "Syncing…"; }
     const all = await Cal.listCalendars(token);
     const chosen = all.filter(c => calChoice().includes(c.id));
     const events = await Cal.fetchMany(k, token, chosen.length ? chosen : all.filter(c => c.primary));
     await openCalPreview(k, events, token, all);
   } catch (e) { calError(e); }
-  finally { if (btn && btn.isConnected) { btn.disabled = false; btn.lastChild.textContent = "Sync calendar"; } }
+  finally { if (btn && btn.isConnected) { btn.disabled = false; btn.lastElementChild.textContent = btn.dataset.label || "Sync calendar"; } }
 }
 async function openCalPreview(k, events, token, allCals) {
   const opts = calOpts();
@@ -1560,6 +1626,7 @@ async function openCalPreview(k, events, token, allCals) {
       const toDump = toDumpOn ? res.rows.filter(r => r.kind === "overlap").map(r => r.title) : [];
       let dumped = 0;
       mutateDay(k, d => { Object.keys(d).forEach(x => delete d[x]); Object.assign(d, clone(res.next)); toDump.forEach(text => { if (!d.dump.some(x => x.text === text)) { d.dump.push({ id: rid(), text }); dumped++; } }); }, { silent: true });
+      S.showSetup = false; // back to the day to see the result
       closeModal();
       const n = kind => res.push.filter(p => p.kind === kind).length, m = kind => res.rows.filter(r => r.kind === kind).length;
       const parts = [n("add") && `${n("add")} added to Google`, (n("move") + n("rename")) && `${n("move") + n("rename")} changed in Google`, n("delete") && `${n("delete")} deleted from Google`,
@@ -1669,6 +1736,14 @@ if ("serviceWorker" in navigator) navigator.serviceWorker.addEventListener("mess
   mutateDay(m.date, dd => { if (dd.boxes[m.key]) dd.boxes[m.key].status = "done"; });
   toast(`Marked “${d.boxes[m.key].text}” done.`);
 });
+function renderCalendarSettings() {
+  if (S.mode !== "fb") return "";
+  const k = S.date, d = getDay(k), label = parseKey(k).toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" });
+  return `<section class="pane setup"><div class="pane-head"><h2>Google Calendar</h2></div>
+    <p>Bring a day’s events from your Google calendars into its boxes. Hourbox only reads your calendar and never changes it.</p>
+    <div class="setup-actions"><button class="btn primary" type="button" data-act="cal-sync" id="cal-sync" data-label="Sync ${esc(label)}" ${d.finished ? "disabled" : ""}><span class="btnicon">${ICON.cal}</span><span>Sync ${esc(label)}</span></button></div>
+    <p class="hint">${d.finished ? "This day is finished. Reopen it to sync its calendar." : "Syncs the day you’re looking at. To sync another day, open that day first."}</p></section>`;
+}
 function renderNotify() {
   let body;
   if (!Notify.supported) body = `<p class="hint">This browser can’t show notifications.</p>`;
