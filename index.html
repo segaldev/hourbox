@@ -269,12 +269,16 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 .refl p { margin: 2px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 
 /* Month */
-.month { display: grid; gap: 18px; }
-.goals ol { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px 18px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+/* Month: goals as a sidebar on the left (like the day view's panels), calendar on the right; stacked on phones */
+.month { display: grid; grid-template-columns: minmax(0, 280px) minmax(0, 1fr); gap: 18px 24px; align-items: start; }
+.month-main { display: grid; gap: 12px; min-width: 0; }
+.month .goals { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 76px); }
+@media (max-width: 820px) { .month { grid-template-columns: minmax(0, 1fr); } .month .goals { position: static; } }
+.goals ol { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
 .goals li { display: flex; align-items: baseline; gap: 8px; }
 .goals .prio-n { font-family: var(--f-display); font-size: 14px; color: var(--now); }
-.goals input { flex: 1; min-width: 0; border: 0; border-bottom: 1px dashed var(--line); background: transparent; padding: 5px 2px; }
-.goals input:focus { outline: none; border-bottom-color: var(--ink); }
+.goals textarea { flex: 1; min-width: 0; border: 0; border-bottom: 1px dashed var(--line); background: transparent; padding: 4px 2px; resize: none; overflow: hidden; font: inherit; line-height: 1.45; color: var(--ink); }
+.goals textarea:focus { outline: none; border-bottom-color: var(--ink); }
 /* Month: a notebook calendar. Ink frame, Mincho numerals, vermilion seal for today and finished days, dotted paper outside the month */
 .cal { background: var(--surface); border: 1px solid var(--frame); border-radius: var(--r); overflow: hidden; }
 .cal-head, .cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
@@ -866,6 +870,7 @@ function render() {
   }
   $("#app").innerHTML = S.view === "journal" ? renderJournalList() : S.view === "day" ? renderDay() : renderMonth();
   placeNowLine();
+  document.querySelectorAll("textarea.goal-ta").forEach(fitGoal);
   if (fid) { const el = document.getElementById(fid); if (el) { el.focus(); try { if (ss != null) el.setSelectionRange(ss, se); } catch (e) {} } }
   const pb = $("#placebar"); pb.hidden = !S.placing; if (S.placing) $("#placetext").textContent = S.placing.copy ? `Tap a box to put a copy of “${S.placing.text}”` : `Tap an hour to schedule “${S.placing.text}”`;
   document.body.classList.toggle("placing", !!S.placing);
@@ -1028,7 +1033,7 @@ function placeNowLine() {
 
 function renderMonth() {
   const m = S.date.slice(0, 7), mo = getMonth(m), first = parseKey(m + "-01");
-  const goals = mo.goals.map((g, i) => `<li><span class="prio-n">${i + 1}</span><input type="text" id="mg-${i}" data-input="goal" data-i="${i}" value="${esc(g)}" placeholder="${i === 0 ? "A goal for this month" : "Another goal"}" maxlength="140"></li>`).join("");
+  const goals = mo.goals.map((g, i) => `<li><span class="prio-n">${i + 1}</span><textarea id="mg-${i}" class="goal-ta" data-input="goal" data-i="${i}" rows="1" placeholder="${i === 0 ? "A goal for this month" : "Another goal"}" maxlength="200">${esc(g)}</textarea></li>`).join("");
   const offset = (first.getDay() + 6) % 7; // Monday first
   const startD = new Date(first); startD.setDate(1 - offset);
   const last = new Date(first.getFullYear(), first.getMonth() + 1, 0);
@@ -1048,9 +1053,11 @@ function renderMonth() {
   }
   const wd = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(w => `<div>${w}</div>`).join("");
   return `<div class="month">
-    <section class="pane goals"><div class="pane-head"><h2>Goals for ${first.toLocaleDateString([], { month: "long" })}</h2><span class="hint">Up to 5</span></div><ol>${goals}</ol></section>
-    <div class="cal"><div class="cal-head">${wd}</div><div class="cal-grid">${html}</div></div>
-    <p class="hint">Tap any day to open it. Past days show what you planned and how it went. Future days can be planned ahead.</p>
+    <aside class="pane goals"><div class="pane-head"><h2>Goals for ${first.toLocaleDateString([], { month: "long" })}</h2><span class="hint">Up to 5</span></div><ol>${goals}</ol></aside>
+    <div class="month-main">
+      <div class="cal"><div class="cal-head">${wd}</div><div class="cal-grid">${html}</div></div>
+      <p class="hint">Tap any day to open it. Past days show what you planned and how it went. Future days can be planned ahead.</p>
+    </div>
   </div>`;
 }
 
@@ -1202,8 +1209,13 @@ document.addEventListener("change", e => {
   mutate("routine", getRoutine(), r => { const it = r.items.find(x => x.id === t.dataset.id); if (!it) return;
     if (t.dataset.rt === "flex") it.flex = t.checked; else if (t.dataset.rt === "tag") it.tag = t.value; else it[t.dataset.rt] = +t.value; });
 });
+function fitGoal(ta) { ta.style.height = "auto"; ta.style.height = ta.scrollHeight + "px"; }
+document.addEventListener("keydown", e => {
+  if (e.key === "Enter" && e.target.classList && e.target.classList.contains("goal-ta")) { e.preventDefault(); document.getElementById("mg-" + (+e.target.dataset.i + 1))?.focus(); }
+});
 document.addEventListener("input", e => {
   const t = e.target;
+  if (t.classList && t.classList.contains("goal-ta")) fitGoal(t);
   if (t.dataset.rt === "text") { mutate("routine", getRoutine(), r => { const it = r.items.find(x => x.id === t.dataset.id); if (it) it.text = t.value; }, { silent: true }); return; }
   if (t.dataset.input === "prio") {
     mutateDay(S.date, d => { d.prio[+t.dataset.i].text = t.value; Object.values(d.boxes).forEach(b => { if (b.pi === +t.dataset.i) b.text = t.value.trim() || b.text; }); }, { silent: true });
