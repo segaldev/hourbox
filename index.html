@@ -398,6 +398,16 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 .calnote svg { flex: none; margin-top: 2px; }
 .cal-list { display: grid; gap: 2px; }
 .chips-col { display: grid; gap: 8px; }
+.cal-chipwrap { display: inline-flex; align-items: center; }
+.cal-chipwrap .cal-chip { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.cal-x { border: 1px solid var(--line); border-left: 0; background: var(--surface-solid); color: var(--muted); height: 100%; min-height: 29px; padding: 0 8px; border-radius: 0 var(--r) var(--r) 0; font-size: 15px; line-height: 1; }
+.cal-x:hover { color: var(--now); }
+.cal-chipwrap .cal-chip[aria-pressed="true"] + .cal-x { border-color: var(--ink); }
+.cal-showremoved { font-size: 13px; align-self: center; margin-left: 4px; }
+.cal-removed { flex-basis: 100%; display: grid; gap: 4px; margin-top: 4px; padding: 8px 10px; background: var(--paper); border: 1px dashed var(--line); border-radius: var(--r); }
+.cal-removed-row { display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--muted); }
+.cal-removed-row i { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+.cal-removed-row .btn { margin-left: auto; padding: 2px 10px; font-size: 12.5px; }
 .cal-chip::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--tc); flex: none; }
 .cal-list .sect-title { margin: 0 0 2px; }
 .cal-row { display: grid; grid-template-columns: 128px minmax(0, 1fr); gap: 2px 12px; padding: 8px 0; border-bottom: 1px solid var(--line); }
@@ -1470,6 +1480,9 @@ async function buildSync(d0, k, remote, opts, api) {
 }
 const calChoice = () => { const c = S.docs.settings && S.docs.settings.calendars; return Array.isArray(c) && c.length ? c : ["primary"]; };
 const setCalChoice = ids => mutate("settings", Object.assign({ kind: "settings" }, S.docs.settings || {}), st => { st.calendars = ids; }, { silent: true });
+// Calendars you removed from the picker (saved in your account)
+const calHidden = () => { const h = S.docs.settings && S.docs.settings.hiddenCalendars; return Array.isArray(h) ? h : []; };
+const setCalHidden = ids => mutate("settings", Object.assign({ kind: "settings" }, S.docs.settings || {}), st => { st.hiddenCalendars = ids; }, { silent: true });
 const calOpts = () => { try { return Object.assign({ own: true, routine: false }, JSON.parse(localStorage.getItem("hourbox-cal-push") || "{}")); } catch (e) { return { own: true, routine: false }; } };
 function calError(e) {
   const c = e && e.code;
@@ -1496,7 +1509,12 @@ async function calSync() {
 }
 async function openCalPreview(k, events, token, allCals) {
   const opts = calOpts();
-  let picked = allCals.filter(c => calChoice().includes(c.id)); if (!picked.length) picked = allCals.filter(c => c.primary);
+  let hidden = calHidden(), showRemoved = false;
+  const visible = () => allCals.filter(c => !hidden.includes(c.id));
+  let picked = visible().filter(c => calChoice().includes(c.id)); if (!picked.length) picked = visible().filter(c => c.primary);
+  const chipsHTML = () => visible().map(c => `<span class="cal-chipwrap"><button type="button" class="chip cal-chip" data-cal="${esc(c.id)}" aria-pressed="${picked.some(x => x.id === c.id)}" style="--tc:${esc(c.color)}">${esc(c.name)}</button><button type="button" class="cal-x" data-hide="${esc(c.id)}" aria-label="Remove ${esc(c.name)} from this list" title="Remove from this list">×</button></span>`).join("")
+    + (hidden.length ? `<button type="button" class="linkbtn cal-showremoved">${showRemoved ? "Hide removed" : `Show removed (${allCals.filter(c => hidden.includes(c.id)).length})`}</button>` : "")
+    + (showRemoved ? `<div class="cal-removed">${allCals.filter(c => hidden.includes(c.id)).map(c => `<span class="cal-removed-row"><i style="background:${esc(c.color)}"></i>${esc(c.name)}<button type="button" class="btn ghost cal-restore" data-restore="${esc(c.id)}">Restore</button></span>`).join("")}</div>` : "");
   const calNames = () => picked.map(c => c.name).join(", ") || "your calendar";
   const multi = () => picked.length > 1;
   let sim = await buildSync(getDay(k), k, events, opts, simApi);
@@ -1525,7 +1543,7 @@ async function openCalPreview(k, events, token, allCals) {
         <label class="flexchk" for="cal-routine"><input type="checkbox" class="check" id="cal-routine" ${opts.routine ? "checked" : ""} ${opts.own ? "" : "disabled"}> Include routine boxes (Get ready, Walk…)</label>
       </div>
       <div class="field"><span class="lbl">Calendars in ${esc((FB.user && FB.user.email) || "your Google account")}</span>
-        <div class="chips" id="cal-cals">${allCals.map(c => `<button type="button" class="chip cal-chip" data-cal="${esc(c.id)}" aria-pressed="${picked.some(x => x.id === c.id)}" style="--tc:${esc(c.color)}">${esc(c.name)}</button>`).join("")}</div></div>
+        <div class="chips" id="cal-cals">${chipsHTML()}</div></div>
       <div class="cal-list" id="cal-list">${listHTML()}</div>
       <label class="flexchk" for="cal-dump" id="cal-dump-wrap" ${skippedN() ? "" : "hidden"}><input type="checkbox" class="check" id="cal-dump" checked> Put events that don’t fit in the brain dump</label>
       <p class="hint">${CAL_WRITE ? "Only this day changes. Boxes you planned yourself are never overwritten, and meetings you didn’t create are never deleted." : "Hourbox only reads your calendar and never changes it. Only this day’s boxes change, and boxes you planned yourself are never overwritten."}</p>
@@ -1548,16 +1566,30 @@ async function openCalPreview(k, events, token, allCals) {
         m("new") && `${m("new")} new from Google`, m("updated") && `${m("updated")} updated`, m("removed") && `${m("removed")} removed`, dumped && `${dumped} sent to the brain dump`].filter(Boolean);
       toast((parts.length ? `Calendar synced: ${parts.join(", ")}.` : "Calendar synced.") + (res.failed.length ? ` Couldn’t sync “${res.failed[0]}”${res.failed.length > 1 ? ` and ${res.failed.length - 1} more` : ""}.` : ""));
     });
-  ov.addEventListener("click", async e => {
-    const chip = e.target.closest(".cal-chip"); if (!chip) return;
-    const id = chip.dataset.cal, on = picked.some(c => c.id === id);
-    picked = on ? picked.filter(c => c.id !== id) : allCals.filter(c => c.id === id || picked.some(x => x.id === c.id));
-    chip.setAttribute("aria-pressed", String(!on));
-    setCalChoice(picked.map(c => c.id));
+  const reread = async () => {
     $("#cal-list").innerHTML = `<p class="hint">Reading ${esc(calNames())}…</p>`; $("#cal-apply").disabled = true;
     try { events = picked.length ? await Cal.fetchMany(k, token, picked) : []; } catch (err) { closeModal(); calError(err); return; }
     sim = await buildSync(getDay(k), k, events, { own: $("#cal-own").checked, routine: $("#cal-routine").checked }, simApi);
     $("#cal-list").innerHTML = listHTML(); $("#cal-dump-wrap").hidden = !skippedN(); const ap = $("#cal-apply"); ap.disabled = !anyChange(); ap.textContent = anyChange() ? (CAL_WRITE ? "Sync" : "Add to this day") : "Nothing to change";
+  };
+  ov.addEventListener("click", async e => {
+    const x = e.target.closest(".cal-x"), rs = e.target.closest(".cal-restore"), sr = e.target.closest(".cal-showremoved"), chip = e.target.closest(".cal-chip");
+    if (sr) { showRemoved = !showRemoved; $("#cal-cals").innerHTML = chipsHTML(); return; }
+    if (rs) { hidden = hidden.filter(id => id !== rs.dataset.restore); setCalHidden(hidden); if (!hidden.length) showRemoved = false; $("#cal-cals").innerHTML = chipsHTML(); return; }
+    if (x) {
+      const id = x.dataset.hide, wasPicked = picked.some(c => c.id === id);
+      hidden = hidden.concat(id); setCalHidden(hidden);
+      if (wasPicked) { picked = picked.filter(c => c.id !== id); setCalChoice(picked.map(c => c.id)); }
+      $("#cal-cals").innerHTML = chipsHTML();
+      if (wasPicked) await reread();
+      return;
+    }
+    if (!chip) return;
+    const id = chip.dataset.cal, on = picked.some(c => c.id === id);
+    picked = on ? picked.filter(c => c.id !== id) : visible().filter(c => c.id === id || picked.some(x2 => x2.id === c.id));
+    chip.setAttribute("aria-pressed", String(!on));
+    setCalChoice(picked.map(c => c.id));
+    await reread();
   });
   ov.addEventListener("change", async e => {
     if (e.target.id !== "cal-own" && e.target.id !== "cal-routine") return;
