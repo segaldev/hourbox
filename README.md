@@ -18,7 +18,7 @@ Setup in the Firebase project's Google Cloud: enable the Google Calendar API, ad
 
 ## Day menu
 
-The **Day options ▾** menu on each day holds **Finish day**, **Journal** (a free-writing space saved with that day), **Add routine** when needed, and **Clear day** (deletes everything on that day after a confirmation, with Undo). On a finished day it offers Reopen day and Edit reflection.
+The **Day options ▾** menu on each day holds **Finish day**, **Journal** (a free-writing space saved with that day), **Add routine** when needed, and **Clear day** (deletes everything on that day after a confirmation, with Undo). On a finished day it offers Reopen day and Edit reflection. The journal icon in the top bar shows all journal entries, newest first, with Edit and Open day links.
 
 ## Notifications
 
