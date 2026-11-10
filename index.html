@@ -1331,7 +1331,7 @@ const Cal = {
     return r.json();
   },
   async listCalendars(token) { // your calendars, main one first; the main one is called "primary"
-    const j = await this.get("https://www.googleapis.com/calendar/v3/users/me/calendarList?minAccessRole=reader&maxResults=250", token);
+    const j = await this.get("https://www.googleapis.com/calendar/v3/users/me/calendarList?minAccessRole=reader&maxResults=250&showHidden=true", token);
     return (j.items || []).filter(c => !c.deleted).map(c => ({ id: c.primary ? "primary" : c.id, name: c.summaryOverride || c.summary || c.id, color: c.backgroundColor || "#888888", primary: !!c.primary }))
       .sort((a, b) => (b.primary - a.primary) || a.name.localeCompare(b.name));
   },
@@ -1524,7 +1524,7 @@ async function openCalPreview(k, events, token, allCals) {
         <label class="flexchk" for="cal-own"><input type="checkbox" class="check" id="cal-own" ${opts.own ? "checked" : ""}> Add my own boxes to Google Calendar</label>
         <label class="flexchk" for="cal-routine"><input type="checkbox" class="check" id="cal-routine" ${opts.routine ? "checked" : ""} ${opts.own ? "" : "disabled"}> Include routine boxes (Get ready, Walk…)</label>
       </div>
-      <div class="field"><span class="lbl">Calendars</span>
+      <div class="field"><span class="lbl">Calendars in ${esc((FB.user && FB.user.email) || "your Google account")}</span>
         <div class="chips" id="cal-cals">${allCals.map(c => `<button type="button" class="chip cal-chip" data-cal="${esc(c.id)}" aria-pressed="${picked.some(x => x.id === c.id)}" style="--tc:${esc(c.color)}">${esc(c.name)}</button>`).join("")}</div></div>
       <div class="cal-list" id="cal-list">${listHTML()}</div>
       <label class="flexchk" for="cal-dump" id="cal-dump-wrap" ${skippedN() ? "" : "hidden"}><input type="checkbox" class="check" id="cal-dump" checked> Put events that don’t fit in the brain dump</label>
