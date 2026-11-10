@@ -76,7 +76,7 @@ function quoteFor(k) { // the same quote for a given date everywhere; neighbouri
 function renderQuote(k) {
   if (!quotesOn()) return "";
   const [text, who, src] = quoteFor(k);
-  return `<figure class="quote" id="quote"><blockquote>${esc(text)}</blockquote><figcaption>${esc(who)}${src ? `, <cite>${esc(src)}</cite>` : ""}</figcaption></figure>`;
+  return `<figure class="quote" id="quote"><span class="qlabel">Quote of the day</span><blockquote>${esc(text)}</blockquote><figcaption>${esc(who)}${src ? `, <cite>${esc(src)}</cite>` : ""}</figcaption></figure>`;
 }
 function renderQuoteSettings() {
   const on = quotesOn();

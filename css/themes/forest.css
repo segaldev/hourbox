@@ -15,4 +15,4 @@
 :root[data-style="forest"], :root[data-style="forest"] body, :root[data-style="forest"] .top { background-image: url("../../img/forest-light.webp"); }
 @media (prefers-color-scheme: dark) { :root[data-style="forest"]:not([data-theme="light"]), :root[data-style="forest"]:not([data-theme="light"]) body, :root[data-style="forest"]:not([data-theme="light"]) .top { background-image: url("../../img/forest-dark.webp"); } }
 :root[data-style="forest"][data-theme="dark"], :root[data-style="forest"][data-theme="dark"] body, :root[data-style="forest"][data-theme="dark"] .top { background-image: url("../../img/forest-dark.webp"); }
-[data-style="forest"] :is(.pane, .a-grid, .cal, .banner, .welcome, .setup) { -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+[data-style="forest"] :is(.pane, .a-grid, .cal, .banner, .welcome, .setup, .day > .quote) { -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }

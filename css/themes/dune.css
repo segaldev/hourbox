@@ -15,6 +15,6 @@
 :root[data-style="dune"], :root[data-style="dune"] body, :root[data-style="dune"] .top { background-image: url("../../img/dune-light.webp"); }
 @media (prefers-color-scheme: dark) { :root[data-style="dune"]:not([data-theme="light"]), :root[data-style="dune"]:not([data-theme="light"]) body, :root[data-style="dune"]:not([data-theme="light"]) .top { background-image: url("../../img/dune-dark.webp"); } }
 :root[data-style="dune"][data-theme="dark"], :root[data-style="dune"][data-theme="dark"] body, :root[data-style="dune"][data-theme="dark"] .top { background-image: url("../../img/dune-dark.webp"); }
-[data-style="dune"] :is(.pane, .a-grid, .cal, .banner, .welcome, .setup) { -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+[data-style="dune"] :is(.pane, .a-grid, .cal, .banner, .welcome, .setup, .day > .quote) { -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
 [data-style="dune"] :is(.btn, .chip, .seg, .seg button, .iconbtn, .dchip) { border-radius: 999px; }
 [data-style="dune"] :is(.brand, .pane h2, .gridhead h2, .modal h3, .welcome-brand h1, .jentry h2, .journal-list > h1) { font-weight: 400; letter-spacing: .01em; }

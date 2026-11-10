@@ -45,6 +45,20 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 .day { display: grid; grid-template-columns: minmax(0, 340px) minmax(0, 1fr); grid-template-areas: "prio grid" "dump grid" "park grid" ". grid"; gap: 16px 24px; align-items: start; }
 .a-prio { grid-area: prio; } .a-dump { grid-area: dump; } .a-park { grid-area: park; } .a-grid { grid-area: grid; }
 @media (max-width: 820px) { .day { grid-template-columns: minmax(0, 1fr); grid-template-areas: "prio" "dump" "grid" "park"; } }
+/* quote of the day: a card on the right on wide screens, a line above the planner otherwise */
+.day > .quote { grid-area: quote; margin-bottom: 0; }
+.day.has-quote { grid-template-areas: "quote quote" "prio grid" "dump grid" "park grid" ". grid"; }
+@media (max-width: 820px) { .day.has-quote { grid-template-areas: "quote" "prio" "dump" "grid" "park"; } }
+.quote .qlabel { display: none; }
+@media (min-width: 1440px) {
+  .wrap:has(.day.has-quote) { max-width: 1500px; }
+  .day.has-quote { grid-template-columns: minmax(0, 320px) minmax(0, 1fr) minmax(0, 270px); grid-template-areas: "prio grid quote" "dump grid quote" "park grid quote" ". grid quote"; }
+  .day > .quote { position: sticky; top: 96px; margin: 0; text-align: left; padding: 18px 18px 16px; border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); box-shadow: var(--shadow); }
+  .day > .quote .qlabel { display: block; font-size: 12px; color: var(--muted); margin-bottom: 10px; letter-spacing: .02em; }
+  .day > .quote blockquote { font-size: 19px; line-height: 1.45; text-wrap: pretty; }
+  .day > .quote blockquote::before { content: "\201C"; display: block; font-size: 44px; line-height: .6; height: 18px; color: var(--accent); font-style: normal; }
+  .day > .quote figcaption { margin-top: 12px; }
+}
 .pane { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 14px 14px 12px; min-width: 0; }
 .pane h2, .gridhead h2 { margin: 0; font-family: var(--f-display); font-weight: 600; font-size: 16px; letter-spacing: -.005em; }
 .pane-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 10px; }

@@ -15,5 +15,5 @@
 :root[data-style="stone"], :root[data-style="stone"] body, :root[data-style="stone"] .top { background-image: url("../../img/stone-light.webp"); }
 @media (prefers-color-scheme: dark) { :root[data-style="stone"]:not([data-theme="light"]), :root[data-style="stone"]:not([data-theme="light"]) body, :root[data-style="stone"]:not([data-theme="light"]) .top { background-image: url("../../img/stone-dark.webp"); } }
 :root[data-style="stone"][data-theme="dark"], :root[data-style="stone"][data-theme="dark"] body, :root[data-style="stone"][data-theme="dark"] .top { background-image: url("../../img/stone-dark.webp"); }
-[data-style="stone"] :is(.pane, .a-grid, .cal, .banner, .welcome, .setup) { -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+[data-style="stone"] :is(.pane, .a-grid, .cal, .banner, .welcome, .setup, .day > .quote) { -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
 [data-style="stone"] :is(.brand, .pane h2, .gridhead h2, .modal h3, .welcome-brand h1, .jentry h2, .journal-list > h1) { font-weight: 600; }

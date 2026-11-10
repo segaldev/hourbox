@@ -1,3 +1,4 @@
+import { renderQuote } from "./quotes.js";
 import { DEF_END, DEF_START, S, getDay, getPark, mutateDay, resplit, routineFor } from "./state.js";
 import { toast } from "./ui.js";
 import { $, ICON, TAGNAME, esc, fmtDur, hourHasBox, hourLabel, hourOfKey, lenOfKey, minOfKey, parseKey, rid, slotKeys, splitOf, timeLabel, todayKey } from "./util.js";
@@ -55,7 +56,8 @@ function renderDay() {
       </div>` : ""}
     </div>` : "";
   const dl = parseKey(k).toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" });
-  return `<div class="day">
+  const quote = renderQuote(k);
+  return `<div class="day${quote ? " has-quote" : ""}">${quote}
     <section class="pane a-prio"><div class="pane-head"><h2>Top 3 priorities</h2><span class="hint">Box them first</span></div><ol class="prio-list">${prio}</ol></section>
     <section class="pane a-dump"><div class="pane-head"><h2>Brain dump</h2><span class="hint">This day only</span></div>
       ${ro ? "" : `<form class="add" data-form="dump"><input type="text" id="add-dump" placeholder="Add a thought or task, then Enter" maxlength="200" autocomplete="off"><button class="btn" type="submit">Add</button></form>`}

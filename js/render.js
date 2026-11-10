@@ -22,7 +22,7 @@ function render() {
     if (fid) document.getElementById(fid)?.focus();
     return;
   }
-  $("#app").innerHTML = S.view === "journal" ? renderJournalList() : renderQuote(S.date) + (S.view === "day" ? renderDay() : renderMonth());
+  $("#app").innerHTML = S.view === "journal" ? renderJournalList() : (S.view === "day" ? renderDay() : renderQuote(S.date) + renderMonth());
   placeNowLine();
   document.querySelectorAll("textarea.goal-ta").forEach(fitGoal);
   if (fid) { const el = document.getElementById(fid); if (el) { el.focus(); try { if (ss != null) el.setSelectionRange(ss, se); } catch (e) {} } }

@@ -20,7 +20,7 @@
   --accent: #9CA5F2; --accent-ink: #14151E; --accent-soft: #2A2D4A; --now: #F0A487; --done: #8FAAE0; --partial: #E0B27A; --skipped: #7E819C;
   --t-deep: #9CA5F2; --t-meet: #7FC3CF; --t-admin: #E0B27A; --t-personal: #E59AB5;
   --shadow: 0 1px 2px rgba(0,0,0,.3); --overlay: rgba(0,0,0,.55); --b1: #2A2C5A; --b2: #1B3550; --b3: #43283A; color-scheme: dark; }
-[data-style="mist"] :is(.pane, .a-grid, .cal, .banner, .welcome) { -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); }
+[data-style="mist"] :is(.pane, .a-grid, .cal, .banner, .welcome, .day > .quote) { -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); }
 [data-style="mist"] :is(.btn, .chip, .seg, .seg button, .iconbtn, .dchip) { border-radius: 999px; }
 [data-style="mist"] :is(.brand, .pane h2, .gridhead h2, .modal h3, .sect-title, .jentry h2, .journal-list > h1, .welcome-brand h1, .welcome-lead, .datepick label, .stat b, .dcell .dn > span:first-child, .cal-head div) { font-weight: 400; }
 [data-style="mist"] :is(.brand, .pane h2, .gridhead h2, .modal h3, .welcome-brand h1, .jentry h2, .journal-list > h1) { font-style: italic; letter-spacing: 0; }
