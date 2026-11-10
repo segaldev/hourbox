@@ -391,6 +391,20 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 .box.filled.flex:hover { border-color: var(--ink); }
 .flexmark { flex: none; font-size: 11px; font-family: var(--f-mono); color: var(--muted); }
 .headbtns { display: flex; gap: 8px; flex-wrap: wrap; }
+.btnicon { display: inline-grid; place-items: center; margin-right: 6px; vertical-align: -3px; }
+.btnicon svg, .calmark svg, .calnote svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.calmark { flex: none; display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.calnote { display: flex; gap: 8px; align-items: flex-start; margin: 0; }
+.calnote svg { flex: none; margin-top: 2px; }
+.cal-list { display: grid; gap: 2px; }
+.cal-row { display: grid; grid-template-columns: 128px minmax(0, 1fr); gap: 2px 12px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.cal-row:last-child { border-bottom: 0; }
+.cal-kind { grid-row: span 2; font-size: 12px; font-weight: 600; color: var(--muted); padding-top: 2px; }
+.cal-title { font-weight: 500; overflow-wrap: anywhere; }
+.cal-sub { font-size: 12.5px; color: var(--muted); }
+.k-new .cal-kind, .k-updated .cal-kind { color: var(--accent); }
+.k-overlap .cal-kind, .k-removed .cal-kind { color: var(--now); }
+@media (max-width: 480px) { .cal-row { grid-template-columns: 1fr; } .cal-kind { grid-row: auto; } }
 a.btn { text-decoration: none; display: inline-flex; align-items: center; }
 .setup .sep { border: 0; border-top: 1px solid var(--line); margin: 14px 0 10px; width: 100%; }
 .setup details summary { cursor: pointer; font-weight: 600; padding: 4px 0; }
@@ -471,6 +485,7 @@ const ICON = {
   today: '<svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>',
   x: '<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>',
   check: '<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></svg>',
+  cal: '<svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 9.5h17M8 3v4M16 3v4"/></svg>',
 };
 
 // ---------- state ----------
@@ -889,7 +904,7 @@ function renderDay() {
       <ul class="items">${park}</ul></section>
     <section class="a-grid ${ro ? "readonly" : ""}">
       <div class="gridhead"><div><h2>${esc(dl)}</h2><div class="meta">${sm.plannedMin ? fmtDur(sm.plannedMin) : "0h"} of ${end - start}h boxed${sm.doneMin ? ` · ${fmtDur(sm.doneMin)} done` : ""}${ro ? " · Finished" : ""}</div></div>
-        <div class="headbtns">${!ro && !d.rtApplied && routineFor(k).some(it => !Object.values(d.boxes).some(b => b.rt === it.id)) ? `<button class="btn" id="add-routine" data-act="add-routine">Add routine</button>` : ""}
+        <div class="headbtns">${!ro && S.mode === "fb" ? `<button class="btn" id="cal-sync" data-act="cal-sync" title="Bring this day’s events from Google Calendar into your boxes"><span class="btnicon">${ICON.cal}</span>Sync calendar</button>` : ""}${!ro && !d.rtApplied && routineFor(k).some(it => !Object.values(d.boxes).some(b => b.rt === it.id)) ? `<button class="btn" id="add-routine" data-act="add-routine">Add routine</button>` : ""}
         ${ro ? `<button class="btn" id="reopen" data-act="reopen">Reopen day</button>` : `<button class="btn primary" id="finish" data-act="finish">Finish day</button>`}</div></div>
       ${summary}${topExt}<div class="hours" id="hours">${hours}</div>${botExt}
     </section></div>`;
@@ -922,6 +937,7 @@ function slotBox(d, key, ro, n, nowMin) {
       ${sub}<button class="stbtn ${st}" id="st-${id}" data-act="cycle" data-h="${key}" title="Status: ${st}. Click to change." aria-label="Status ${st}">${st === "done" ? ICON.check : st === "skipped" ? ICON.x : ""}</button>
       <span class="btxt">${esc(b.text)}</span>
       ${b.pi != null ? `<span class="prio-flag" title="Top priority">P${b.pi + 1}</span>` : ""}
+      ${b.cal ? `<span class="calmark" title="From Google Calendar${b.cal.time ? `: ${esc(b.cal.time)}` : ""}">${ICON.cal}${b.cal.time ? `<span>${esc(b.cal.time)}</span>` : ""}</span>` : ""}
       ${b.flex ? `<span class="flexmark" title="Flexible: drop something here and this moves to the nearest free time">flexible</span>` : ""}
       ${b.tag ? `<span class="tag tg-${b.tag}">${esc(TAGNAME[b.tag] || b.tag)}</span>` : ""}
     </div>`;
@@ -1080,6 +1096,7 @@ document.addEventListener("click", e => {
       }); break; }
     case "finish": openFinish(); break;
     case "edit-reflection": openFinish(true); break;
+    case "cal-sync": calSync(); break;
     case "add-routine": {
       let res; mutateDay(k, d => { res = applyRoutine(d, k); });
       toast(res.added.length ? `Added ${res.added.join(", ")}.${res.skipped.length ? ` Skipped ${res.skipped.join(", ")} (time already taken).` : ""}` : `Nothing added. ${res.skipped.join(", ")} overlap boxes you already have.`);
@@ -1172,6 +1189,7 @@ function openBoxEditor(h) {
     <div class="body">
       <div class="field"><label for="be-text">What will you do?</label><input type="text" id="be-text" value="${esc(b.text)}" maxlength="140" placeholder="One focused activity"></div>
       <div class="field"><span class="lbl">Tag</span><div class="chips" id="be-tags">${tagChips()}</div></div>
+      ${b.cal ? `<p class="hint calnote">${ICON.cal}<span>From Google Calendar${b.cal.time ? ` (${esc(b.cal.time)})` : ""}. Syncing the calendar again updates this box.${b.cal.link ? ` <a href="${esc(b.cal.link)}" target="_blank" rel="noopener">Open in Google Calendar</a>` : ""}</span></p>` : ""}
       <label class="flexchk" for="be-flex"><input type="checkbox" class="check" id="be-flex" ${b.flex ? "checked" : ""}> Flexible: if I drop something here, move this to the nearest free time</label>
       ${isNew ? "" : `<div class="field"><span class="lbl">Status</span><div class="chips" id="be-st">${stChips()}</div></div>`}
     </div>
@@ -1263,6 +1281,133 @@ function openFinish(editOnly) { // editOnly: change the reflection of a finished
         const moved = toTom.prio.length + toTom.dump.length;
         toast(editOnly ? "Reflection saved." : moved ? `Day finished. ${moved} item${moved > 1 ? "s" : ""} moved to tomorrow.` : "Day finished.");
       }
+    });
+}
+
+// ---------- Google Calendar import (read-only for now) ----------
+// Each imported box keeps its event id in box.cal, so a later version can write changes back.
+const CAL_SCOPE = "https://www.googleapis.com/auth/calendar.events.readonly";
+const Cal = {
+  token: null, exp: 0,
+  cached() {
+    if (this.token && Date.now() < this.exp) return this.token;
+    try { const t = JSON.parse(sessionStorage.getItem("hourbox-cal") || "null"); if (t && Date.now() < t.exp) { this.token = t.token; this.exp = t.exp; return t.token; } } catch (e) {}
+    return null;
+  },
+  forget() { this.token = null; this.exp = 0; try { sessionStorage.removeItem("hourbox-cal"); } catch (e) {} },
+  async authorize() { // Google asks once to allow read-only calendar access; the token lasts about an hour
+    if (USE_EMULATOR) return "emulator-token";
+    const provider = new FB.m.GoogleAuthProvider(); provider.addScope(CAL_SCOPE);
+    if (FB.user && FB.user.email) provider.setCustomParameters({ login_hint: FB.user.email });
+    const res = await FB.m.reauthenticateWithPopup(FB.user, provider);
+    const cred = FB.m.GoogleAuthProvider.credentialFromResult(res);
+    if (!cred || !cred.accessToken) throw { code: "no-token" };
+    this.token = cred.accessToken; this.exp = Date.now() + 50 * 60 * 1000;
+    try { sessionStorage.setItem("hourbox-cal", JSON.stringify({ token: this.token, exp: this.exp })); } catch (e) {}
+    return this.token;
+  },
+  async fetchDay(k, token) {
+    const d0 = parseKey(k), d1 = new Date(d0); d1.setDate(d1.getDate() + 1);
+    const q = new URLSearchParams({ timeMin: d0.toISOString(), timeMax: d1.toISOString(), singleEvents: "true", orderBy: "startTime", maxResults: "100" });
+    let r; try { r = await fetch("https://www.googleapis.com/calendar/v3/calendars/primary/events?" + q, { headers: { Authorization: "Bearer " + token } }); }
+    catch (e) { throw { code: "network" }; }
+    if (r.status === 401) { this.forget(); throw { code: "expired" }; }
+    if (r.status === 403) { const t = await r.text(); if (/insufficient/i.test(t)) { this.forget(); throw { code: "scope" }; } throw { code: /disabled|not been used/i.test(t) ? "api-off" : "forbidden" }; }
+    if (!r.ok) throw { code: "http", status: r.status };
+    return (await r.json()).items || [];
+  }
+};
+// Put box b back as close to `start` as possible, keeping its length (later first, within 6 hours).
+function placeNear(dd, b, start, len) {
+  for (let off = 0; off <= 360; off += 15) for (const c of off ? [start + off, start - off] : [start]) {
+    const fit = slotsFor(dd, c, len); if (!fit) continue;
+    for (let h = fit.h0; h <= fit.h1; h++) if (splitOf(dd, h) < fit.need) resplit(dd, h, fit.need);
+    fit.keys.forEach(key => { dd.boxes[key] = clone(b); });
+    dd.start = Math.min(dd.start, fit.h0); dd.end = Math.max(dd.end, fit.h1 + 1);
+    return c;
+  }
+  return null;
+}
+// Work out what syncing would do to day k, without changing anything yet.
+function planCalendar(d, k, events) {
+  const dd = clone(d), dayStart = parseKey(k).getTime(), rows = [], seen = new Set();
+  const prev = {}; // calendar boxes from the last sync are rebuilt from the calendar
+  for (const [key, b] of Object.entries(dd.boxes)) if (b.cal) { (prev[b.cal.id] = prev[b.cal.id] || []).push({ key, b }); delete dd.boxes[key]; }
+  for (const ev of events) {
+    if (ev.status === "cancelled") continue;
+    const me = (ev.attendees || []).find(a => a.self); if (me && me.responseStatus === "declined") continue;
+    const title = (ev.summary || "(No title)").trim().slice(0, 140);
+    if (!ev.start || !ev.start.dateTime) { rows.push({ title, kind: "allday" }); continue; }
+    const sm = Math.max(0, Math.round((new Date(ev.start.dateTime) - dayStart) / 60000)), em = Math.min(1440, Math.round((new Date(ev.end.dateTime) - dayStart) / 60000));
+    if (em <= sm) continue;
+    seen.add(ev.id);
+    const start = Math.floor(sm / 15) * 15, end = Math.min(1440, Math.max(start + 15, Math.ceil(em / 15) * 15));
+    const real = `${timeLabel(sm)} – ${timeLabel(em)}`, range = `${timeLabel(start)} – ${timeLabel(end)}`;
+    // anything already planned in that time?
+    const blockers = Object.keys(dd.boxes).filter(key => { const s0 = minOfKey(key), e0 = s0 + lenOfKey(dd, key); return s0 < end && e0 > start; });
+    const fixed = blockers.filter(key => !dd.boxes[key].flex);
+    if (fixed.length) { rows.push({ title, kind: "overlap", range, with: dd.boxes[fixed[0]].text }); continue; }
+    const moved = blockers.map(key => { const b = dd.boxes[key], len = lenOfKey(dd, key); delete dd.boxes[key]; return { key, b, len }; });
+    const fit = slotsFor(dd, start, end - start);
+    if (!fit) { moved.forEach(({ key, b }) => { dd.boxes[key] = b; }); rows.push({ title, kind: "overlap", range, with: "the boxes in that hour" }); continue; }
+    for (let h = fit.h0; h <= fit.h1; h++) if (splitOf(dd, h) < fit.need) resplit(dd, h, fit.need);
+    const old = prev[ev.id] && prev[ev.id][0].b;
+    fit.keys.forEach(key => { dd.boxes[key] = { text: title, tag: old ? old.tag || "meet" : "meet", status: old ? old.status || "planned" : "planned",
+      cal: { id: ev.id, calendar: "primary", etag: ev.etag || "", updated: ev.updated || "", link: ev.htmlLink || "", time: start === sm && end === em ? "" : real } }; });
+    dd.start = Math.min(dd.start, fit.h0); dd.end = Math.max(dd.end, fit.h1 + 1);
+    moved.forEach(({ key, b, len }) => { if (placeNear(dd, b, minOfKey(key), len) == null) dd.dump.push({ id: rid(), text: b.text }); });
+    const changed = old && (old.text !== title || prev[ev.id].map(x => x.key).sort().join() !== fit.keys.slice().sort().join());
+    rows.push({ title, kind: !old ? "new" : changed ? "updated" : "same", range: real, movedAside: moved.map(m => m.b.text) });
+  }
+  for (const [id, list] of Object.entries(prev)) if (!seen.has(id)) rows.push({ title: list[0].b.text, kind: "removed" });
+  dd.calSyncedAt = new Date().toISOString();
+  return { rows, next: dd };
+}
+async function calSync() {
+  const k = S.date, btn = $("#cal-sync");
+  let token = Cal.cached();
+  try {
+    if (!token) token = await Cal.authorize(); // opens Google's permission popup straight from the tap
+    if (btn) { btn.disabled = true; btn.lastChild.textContent = "Syncing…"; }
+    const events = await Cal.fetchDay(k, token);
+    openCalPreview(k, events);
+  } catch (e) {
+    const c = e && e.code;
+    if (c === "auth/popup-closed-by-user" || c === "auth/cancelled-popup-request") {}
+    else if (c === "expired") toast("Calendar access expired. Tap Sync calendar again.");
+    else if (c === "scope") toast("Hourbox needs permission to read your calendar. Tap Sync calendar and allow it.");
+    else if (c === "api-off") toast("The Google Calendar API isn’t turned on for your Firebase project yet.");
+    else if (c === "auth/user-mismatch") toast("Choose the same Google account you log in to Hourbox with.");
+    else if (c === "network") toast("Can’t reach Google Calendar. Check your connection.");
+    else toast("Couldn’t read your calendar. Try again in a moment.");
+  } finally { if (btn && btn.isConnected) { btn.disabled = false; btn.lastChild.textContent = "Sync calendar"; } }
+}
+function openCalPreview(k, events) {
+  const { rows, next } = planCalendar(getDay(k), k, events);
+  const label = { new: "New", updated: "Updated", same: "Already in Hourbox", overlap: "Doesn’t fit", allday: "All-day", removed: "No longer in your calendar" };
+  const skipped = rows.filter(r => r.kind === "overlap");
+  const changes = rows.filter(r => r.kind !== "same" && r.kind !== "allday").length;
+  const list = rows.length ? rows.map(r => `<div class="cal-row k-${r.kind}"><span class="cal-kind">${label[r.kind]}</span><span class="cal-title">${esc(r.title)}</span>
+      <span class="cal-sub">${r.kind === "overlap" ? `${esc(r.range)} · overlaps “${esc(r.with)}”` : r.kind === "allday" ? "Not placed in a box" : r.kind === "removed" ? "Its box will be removed" : esc(r.range || "")}${r.movedAside && r.movedAside.length ? ` · moves “${esc(r.movedAside[0])}” aside` : ""}</span></div>`).join("")
+    : `<p class="hint">No events on your Google Calendar for this day.</p>`;
+  openModal(`
+    <header><span class="eyebrow">${parseKey(k).toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" })} · Google Calendar</span><h3>Sync calendar</h3></header>
+    <div class="body">
+      <div class="cal-list">${list}</div>
+      ${skipped.length ? `<label class="flexchk" for="cal-dump"><input type="checkbox" class="check" id="cal-dump" checked> Put the ${skipped.length === 1 ? "event that doesn’t fit" : `${skipped.length} events that don’t fit`} in the brain dump</label>` : ""}
+      <p class="hint">Only this day changes. Boxes you planned yourself stay where they are. Calendar events snap to the nearest 15 minutes.</p>
+    </div>
+    <footer><button class="btn" data-m="cancel" id="cal-cancel">Cancel</button><button class="btn primary" data-m="apply" id="cal-apply" ${changes || skipped.length ? "" : "disabled"}>${changes ? "Update this day" : "Nothing to change"}</button></footer>`,
+    btn => {
+      if (btn.dataset.m === "cancel") closeModal();
+      if (btn.dataset.m !== "apply") return;
+      const toDump = $("#cal-dump") && $("#cal-dump").checked ? skipped.map(r => r.title) : [];
+      let dumped = 0;
+      mutateDay(k, d => { Object.keys(d).forEach(x => delete d[x]); Object.assign(d, clone(next)); toDump.forEach(text => { if (!d.dump.some(x => x.text === text)) { d.dump.push({ id: rid(), text }); dumped++; } }); }, { silent: true });
+      closeModal();
+      const added = rows.filter(r => r.kind === "new").length, upd = rows.filter(r => r.kind === "updated").length, rem = rows.filter(r => r.kind === "removed").length;
+      const parts = [added && `added ${added} event${added > 1 ? "s" : ""}`, upd && `updated ${upd}`, rem && `removed ${rem}`, dumped && `${dumped} sent to the brain dump`].filter(Boolean);
+      toast(parts.length ? `Calendar synced: ${parts.join(", ")}.` : "Calendar synced.");
     });
 }
 

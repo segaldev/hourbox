@@ -8,6 +8,12 @@ A simple time-boxing planner: top 3 priorities, brain dump, parking lot, a daily
 
 Open **Settings** (the sliders button) to set up boxes every new day starts with, such as "6:00 Get ready". Each item has a start time, length, tag, weekdays, and can be marked **Flexible**. Flexible items have a dashed outline. When you drop something on one, it moves to the nearest free time instead of being sent to the brain dump. Days that already exist get an **Add routine** button.
 
+## Google Calendar (read-only for now)
+
+On any day you're planning, **Sync calendar** reads that day's events from your primary Google Calendar and shows a preview before changing anything. Timed events become boxes (snapped to 15 minutes, tagged Meetings); flexible boxes move aside; boxes you planned yourself are never overwritten; events that don't fit can go to the brain dump; all-day and declined events are skipped. Syncing again updates only the calendar boxes and keeps their status. Each box stores its event id for a future write-back.
+
+Setup in the Firebase project's Google Cloud: enable the Google Calendar API, add the `calendar.events.readonly` scope to the OAuth consent screen, and (in Testing mode) add yourself as a test user.
+
 ## Notifications
 
 In **Settings → Notifications**, turn on notifications for this device. While Hourbox is open (even in the background), you get a notification when a box ends and the next one starts, with a **Mark done** button for the box that just ended. `sw.js` is a tiny service worker used only to show notifications and handle that button; it doesn't cache anything.
