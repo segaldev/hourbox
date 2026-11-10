@@ -81,11 +81,11 @@ const STYLES = [
   { v: "sage", name: "Sage Garden", mood: "Soft sage and stone, a faint leaf, calm and gentle.", sw: ["#EDF1EB", "#FAFBF8", "#1F2A24", "#4D7A61", "#C58A3E"], font: "'Newsreader', serif" },
   { v: "deep", name: "Deep Water", mood: "Night-ocean blues, sea-glass teal, the current hour glows.", sw: ["#0C1A23", "#11232E", "#DCE8EE", "#6CC6C2", "#F2C46D"], font: "'Manrope', sans-serif" },
   { v: "mist", name: "Morning Mist", mood: "Airy periwinkle haze, frosted panels, italic headings.", sw: ["#F0F1F7", "#D8D9F4", "#222436", "#5862B6", "#E0896A"], font: "'Instrument Serif', serif", italic: true },
-  // picture styles: the background is an image in img/<v>-light.webp and img/<v>-dark.webp
-  { v: "stone", name: "River Stone", mood: "A raked zen garden with smooth stones, slate and moss.", sw: ["#ECEAE4", "#FAF9F6", "#262A2C", "#4F5F68", "#5E7A64"], font: "'Cormorant Garamond', serif", pic: true },
-  { v: "forest", name: "Pine Forest", mood: "Pines fading into morning fog; a moonlit night in dark.", sw: ["#E6ECE6", "#FAFCF9", "#1E2A23", "#3E6B52", "#C27A3A"], font: "'Fraunces', serif", pic: true },
-  { v: "wood", name: "Oak Desk", mood: "Paper sheets on a warm oak desk; walnut in dark.", sw: ["#D9C2A0", "#FBF8F1", "#2E241B", "#6B4F35", "#5F7A4A"], font: "'Lora', serif", pic: true },
-  { v: "dune", name: "Desert Dune", mood: "Soft dunes at dawn, terracotta; a starry desert in dark.", sw: ["#F1E6DC", "#FFFBF7", "#3A2A22", "#A5603B", "#7C8A5A"], font: "'Marcellus', serif", pic: true },
+  // photo styles: the background is img/<v>.jpg (credits in css/themes/<v>.css and the README)
+  { v: "stone", name: "River Stone", mood: "Raked gravel and mossy stones of Ryōan-ji, Kyoto.", sw: ["#ECEAE4", "#FAF9F6", "#262A2C", "#4F5F68", "#5E7A64"], font: "'Cormorant Garamond', serif", pic: true },
+  { v: "forest", name: "Pine Forest", mood: "Dark pines rising into soft morning fog.", sw: ["#E6ECE6", "#FAFCF9", "#1E2A23", "#3E6B52", "#C27A3A"], font: "'Fraunces', serif", pic: true },
+  { v: "wood", name: "Oak Desk", mood: "Paper sheets on a warm oak desk.", sw: ["#D9C2A0", "#FBF8F1", "#2E241B", "#6B4F35", "#5F7A4A"], font: "'Lora', serif", pic: true },
+  { v: "dune", name: "Desert Dune", mood: "Wind-rippled dunes of the Thar Desert, terracotta accents.", sw: ["#F1E6DC", "#FFFBF7", "#3A2A22", "#A5603B", "#7C8A5A"], font: "'Marcellus', serif", pic: true },
 ];
 function getStyle() { try { const v = localStorage.getItem("hourbox-style"); return STYLES.some(x => x.v === v) ? v : "washi"; } catch (e) { return "washi"; } }
 function setStyle(v) {
@@ -108,12 +108,17 @@ function renderLook() {
     <div class="chips">${opt("light", "Light")}${opt("dark", "Dark")}${opt("auto", "System")}</div>
     <p class="sect-title" style="margin-top:18px">Style</p>
     <div class="style-grid">${STYLES.map(x => `<button type="button" class="style-card" id="style-${x.v}" data-act="style" data-v="${x.v}" aria-pressed="${st === x.v}">
-      ${x.pic ? `<span class="style-pic" style="background-image:url('img/${x.v}-${document.documentElement.matches("[data-theme=dark]") || (getAppearance() === "auto" && window.matchMedia("(prefers-color-scheme: dark)").matches) ? "dark" : "light"}.webp')"></span>` : ""}
+      ${x.pic ? `<span class="style-pic" style="background-image:url('img/${x.v}.jpg')"></span>` : ""}
       <span class="style-sw">${x.sw.map(c => `<i style="background:${c}"></i>`).join("")}</span>
       <span class="style-name" style="font-family:${x.font};${x.italic ? "font-style:italic;font-weight:400;" : ""}">${x.name}</span>
       <span class="style-mood">${x.mood}</span>
       ${st === x.v ? `<span class="style-on">In use</span>` : ""}</button>`).join("")}</div>
     <p class="hint">Theme and style are saved on this device, so your phone and Mac can look different.</p>
+    <p class="hint photo-credits">Photos from Wikimedia Commons:
+      River Stone by <a href="https://commons.wikimedia.org/wiki/File:Le_jardin_zen_du_temple_Ry%C3%B4an-ji_(Kyoto,_Japon)_(32162405237).jpg" target="_blank" rel="noopener">Jean-Pierre Dalbéra</a> (CC BY 2.0) ·
+      Pine Forest by <a href="https://commons.wikimedia.org/wiki/File:Nature-forest-trees-fog.jpg" target="_blank" rel="noopener">Jaymantri</a> (Pexels) ·
+      Oak Desk by <a href="https://commons.wikimedia.org/wiki/File:Oak_Texture_-_5106733699_c1d5b0df29_b.jpg" target="_blank" rel="noopener">William Warby</a> (CC BY 2.0) ·
+      Desert Dune by <a href="https://commons.wikimedia.org/wiki/File:Thar_Desert,_India,_Sand_dunes.jpg" target="_blank" rel="noopener">© Vyacheslav Argenberg</a> (CC BY 4.0)</p>
   </section>`;
 }
 function renderSetup() {

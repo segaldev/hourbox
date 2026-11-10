@@ -1,17 +1,19 @@
-/* Oak Desk: paper sheets on a warm wooden desk. The picture is drawn by a script (img/wood-light.webp, img/wood-dark.webp). */
+/* Oak Desk. Oak texture. Photo: William Warby, CC BY 2.0 (commons.wikimedia.org/wiki/File:Oak_Texture_-_5106733699_c1d5b0df29_b.jpg); mirrored into a tile. */
 :root[data-style="wood"] {
-  --r: 6px; --r-s: 4px; --check-r: 4px; --check-off-r: 4px; --bg-image: none; --cell-out-image: none; --bg-size: cover; --bg-repeat: no-repeat; --bg-pos: center; --box-bg: var(--sunk); --box-border: transparent; --done-fill: var(--done); --done-mark: var(--surface-solid); --pri-bg: var(--accent); --pri-fg: var(--accent-ink); --pri-bd: var(--accent); --pri-hbg: var(--accent); --pri-hfg: var(--accent-ink); --frame: var(--line);
+  --r: 6px; --r-s: 4px; --check-r: 4px; --check-off-r: 4px; --bg-image: none; --cell-out-image: none; --bg-size: 1440px auto; --bg-repeat: repeat; --bg-pos: 0 0; --box-bg: var(--sunk); --box-border: transparent; --done-fill: var(--done); --done-mark: var(--surface-solid); --pri-bg: var(--accent); --pri-fg: var(--accent-ink); --pri-bd: var(--accent); --pri-hbg: var(--accent); --pri-hfg: var(--accent-ink); --frame: var(--line);
   --f-display: "Lora", Georgia, serif; --f-body: "Work Sans", -apple-system, "Segoe UI", system-ui, sans-serif; --f-mono: "Work Sans", -apple-system, system-ui, sans-serif;
   --desk: #D9C2A0; --paper: #F7F2E8; --surface: #FBF8F1; --surface-solid: #FBF8F1; --sunk: #F1EBDF; --ink: #2E241B; --muted: #756757; --line: #E2D8C7; --accent: #6B4F35; --accent-ink: #FBF7F0; --accent-soft: #EFE4D4; --now: #B5562F; --done: #5F7A4A; --partial: #B98A3C; --skipped: #8F8578; --t-deep: #4D6680; --t-meet: #5F7A4A; --t-admin: #B98A3C; --t-personal: #9C5F6A;
-  --shadow: 0 1px 2px rgba(40,30,20,.10), 0 10px 30px rgba(40,30,20,.12); --overlay: rgba(30,28,25,.35);
+  --shadow: 0 1px 2px rgba(40,30,20,.10), 0 10px 30px rgba(40,30,20,.12); --overlay: rgba(30,28,25,.35); --veil: rgba(240,225,200,.12);
 }
 @media (prefers-color-scheme: dark) { :root[data-style="wood"]:not([data-theme="light"]) {
   --desk: #2A1E15; --paper: #2F2722; --surface: #2B241F; --surface-solid: #2B241F; --sunk: #352D27; --ink: #EFE6DA; --muted: #B3A391; --line: #463B33; --accent: #D9B58A; --accent-ink: #22180F; --accent-soft: #43372B; --now: #E68A5C; --done: #A9C08E; --partial: #E0B66E; --skipped: #978A7C; --t-deep: #9DB7D6; --t-meet: #A9C08E; --t-admin: #E0B66E; --t-personal: #D9A0AC;
-  --shadow: 0 1px 2px rgba(0,0,0,.35), 0 10px 30px rgba(0,0,0,.3); --overlay: rgba(0,0,0,.55); color-scheme: dark; } }
+  --shadow: 0 1px 2px rgba(0,0,0,.35), 0 10px 30px rgba(0,0,0,.3); --overlay: rgba(0,0,0,.55); color-scheme: dark; --veil: rgba(22,13,6,.62); } }
 :root[data-style="wood"][data-theme="dark"] {
   --desk: #2A1E15; --paper: #2F2722; --surface: #2B241F; --surface-solid: #2B241F; --sunk: #352D27; --ink: #EFE6DA; --muted: #B3A391; --line: #463B33; --accent: #D9B58A; --accent-ink: #22180F; --accent-soft: #43372B; --now: #E68A5C; --done: #A9C08E; --partial: #E0B66E; --skipped: #978A7C; --t-deep: #9DB7D6; --t-meet: #A9C08E; --t-admin: #E0B66E; --t-personal: #D9A0AC;
-  --shadow: 0 1px 2px rgba(0,0,0,.35), 0 10px 30px rgba(0,0,0,.3); --overlay: rgba(0,0,0,.55); color-scheme: dark; }
+  --shadow: 0 1px 2px rgba(0,0,0,.35), 0 10px 30px rgba(0,0,0,.3); --overlay: rgba(0,0,0,.55); color-scheme: dark; --veil: rgba(22,13,6,.62); }
 /* the picture: set here so its path is relative to this file */
-:root[data-style="wood"], :root[data-style="wood"] body, :root[data-style="wood"] .top, :root[data-style="wood"] .zen { background-image: url("../../img/wood-light.webp"); }
-@media (prefers-color-scheme: dark) { :root[data-style="wood"]:not([data-theme="light"]), :root[data-style="wood"]:not([data-theme="light"]) body, :root[data-style="wood"]:not([data-theme="light"]) .top, :root[data-style="wood"]:not([data-theme="light"]) .zen { background-image: url("../../img/wood-dark.webp"); } }
-:root[data-style="wood"][data-theme="dark"], :root[data-style="wood"][data-theme="dark"] body, :root[data-style="wood"][data-theme="dark"] .top, :root[data-style="wood"][data-theme="dark"] .zen { background-image: url("../../img/wood-dark.webp"); }
+:root[data-style="wood"], :root[data-style="wood"] body, :root[data-style="wood"] .zen { background-image: linear-gradient(var(--veil), var(--veil)), url("../../img/wood.jpg"); }
+@media (prefers-color-scheme: dark) { :root[data-style="wood"]:not([data-theme="light"]), :root[data-style="wood"]:not([data-theme="light"]) body, :root[data-style="wood"]:not([data-theme="light"]) .zen { background-image: linear-gradient(var(--veil), var(--veil)), url("../../img/wood.jpg"); } }
+:root[data-style="wood"][data-theme="dark"], :root[data-style="wood"][data-theme="dark"] body, :root[data-style="wood"][data-theme="dark"] .zen { background-image: linear-gradient(var(--veil), var(--veil)), url("../../img/wood.jpg"); }
+[data-style="wood"] .top { background-color: color-mix(in srgb, var(--surface-solid) 80%, transparent); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); padding-inline: 14px; border: 1px solid var(--line); border-radius: var(--r); margin-top: 10px; }
+[data-style="wood"] body::before { background: transparent; }

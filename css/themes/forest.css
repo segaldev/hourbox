@@ -1,18 +1,20 @@
-/* Pine Forest: layers of pines fading into morning fog. The picture is drawn by a script (img/forest-light.webp, img/forest-dark.webp). */
+/* Pine Forest. Pines in fog. Photo: Jaymantri via Pexels, free to use (commons.wikimedia.org/wiki/File:Nature-forest-trees-fog.jpg). */
 :root[data-style="forest"] {
-  --r: 10px; --r-s: 7px; --check-r: 5px; --check-off-r: 5px; --bg-image: none; --cell-out-image: none; --bg-size: cover; --bg-repeat: no-repeat; --bg-pos: center bottom; --box-bg: var(--sunk); --box-border: transparent; --done-fill: var(--done); --done-mark: var(--surface-solid); --pri-bg: var(--accent); --pri-fg: var(--accent-ink); --pri-bd: var(--accent); --pri-hbg: var(--accent); --pri-hfg: var(--accent-ink); --frame: var(--line);
+  --r: 10px; --r-s: 7px; --check-r: 5px; --check-off-r: 5px; --bg-image: none; --cell-out-image: none; --bg-size: cover; --bg-repeat: no-repeat; --bg-pos: center 35%; --box-bg: var(--sunk); --box-border: transparent; --done-fill: var(--done); --done-mark: var(--surface-solid); --pri-bg: var(--accent); --pri-fg: var(--accent-ink); --pri-bd: var(--accent); --pri-hbg: var(--accent); --pri-hfg: var(--accent-ink); --frame: var(--line);
   --f-display: "Fraunces", Georgia, serif; --f-body: "Source Sans 3", -apple-system, "Segoe UI", system-ui, sans-serif; --f-mono: "Source Sans 3", -apple-system, system-ui, sans-serif;
   --desk: #E6ECE6; --paper: #EEF2EE; --surface: rgba(250,252,249,.84); --surface-solid: #FAFCF9; --sunk: rgba(226,234,227,.92); --ink: #1E2A23; --muted: #596B60; --line: rgba(90,120,100,.22); --accent: #3E6B52; --accent-ink: #F4F8F5; --accent-soft: #DCE8E0; --now: #C27A3A; --done: #3E6B52; --partial: #B38B3A; --skipped: #849088; --t-deep: #3F6288; --t-meet: #3E6B52; --t-admin: #B07E36; --t-personal: #A0607A;
-  --shadow: 0 1px 2px rgba(30,30,30,.05), 0 8px 24px rgba(30,30,30,.07); --overlay: rgba(30,28,25,.35);
+  --shadow: 0 1px 2px rgba(30,30,30,.05), 0 8px 24px rgba(30,30,30,.07); --overlay: rgba(30,28,25,.35); --veil: rgba(232,238,232,.22);
 }
 @media (prefers-color-scheme: dark) { :root[data-style="forest"]:not([data-theme="light"]) {
   --desk: #121A17; --paper: #16201C; --surface: rgba(22,32,28,.84); --surface-solid: #18221E; --sunk: rgba(34,46,41,.9); --ink: #E1EAE3; --muted: #93A69A; --line: rgba(150,190,165,.14); --accent: #8CC0A0; --accent-ink: #0F1613; --accent-soft: #213229; --now: #E7A866; --done: #8CC0A0; --partial: #D9B26A; --skipped: #76857C; --t-deep: #92B4DA; --t-meet: #8CC0A0; --t-admin: #D9B26A; --t-personal: #D69CB2;
-  --shadow: 0 1px 2px rgba(0,0,0,.35), 0 10px 30px rgba(0,0,0,.3); --overlay: rgba(0,0,0,.55); color-scheme: dark; } }
+  --shadow: 0 1px 2px rgba(0,0,0,.35), 0 10px 30px rgba(0,0,0,.3); --overlay: rgba(0,0,0,.55); color-scheme: dark; --veil: rgba(8,14,11,.58); } }
 :root[data-style="forest"][data-theme="dark"] {
   --desk: #121A17; --paper: #16201C; --surface: rgba(22,32,28,.84); --surface-solid: #18221E; --sunk: rgba(34,46,41,.9); --ink: #E1EAE3; --muted: #93A69A; --line: rgba(150,190,165,.14); --accent: #8CC0A0; --accent-ink: #0F1613; --accent-soft: #213229; --now: #E7A866; --done: #8CC0A0; --partial: #D9B26A; --skipped: #76857C; --t-deep: #92B4DA; --t-meet: #8CC0A0; --t-admin: #D9B26A; --t-personal: #D69CB2;
-  --shadow: 0 1px 2px rgba(0,0,0,.35), 0 10px 30px rgba(0,0,0,.3); --overlay: rgba(0,0,0,.55); color-scheme: dark; }
+  --shadow: 0 1px 2px rgba(0,0,0,.35), 0 10px 30px rgba(0,0,0,.3); --overlay: rgba(0,0,0,.55); color-scheme: dark; --veil: rgba(8,14,11,.58); }
 /* the picture: set here so its path is relative to this file */
-:root[data-style="forest"], :root[data-style="forest"] body, :root[data-style="forest"] .top, :root[data-style="forest"] .zen { background-image: url("../../img/forest-light.webp"); }
-@media (prefers-color-scheme: dark) { :root[data-style="forest"]:not([data-theme="light"]), :root[data-style="forest"]:not([data-theme="light"]) body, :root[data-style="forest"]:not([data-theme="light"]) .top, :root[data-style="forest"]:not([data-theme="light"]) .zen { background-image: url("../../img/forest-dark.webp"); } }
-:root[data-style="forest"][data-theme="dark"], :root[data-style="forest"][data-theme="dark"] body, :root[data-style="forest"][data-theme="dark"] .top, :root[data-style="forest"][data-theme="dark"] .zen { background-image: url("../../img/forest-dark.webp"); }
+:root[data-style="forest"], :root[data-style="forest"] body, :root[data-style="forest"] .zen { background-image: linear-gradient(var(--veil), var(--veil)), url("../../img/forest.jpg"); }
+@media (prefers-color-scheme: dark) { :root[data-style="forest"]:not([data-theme="light"]), :root[data-style="forest"]:not([data-theme="light"]) body, :root[data-style="forest"]:not([data-theme="light"]) .zen { background-image: linear-gradient(var(--veil), var(--veil)), url("../../img/forest.jpg"); } }
+:root[data-style="forest"][data-theme="dark"], :root[data-style="forest"][data-theme="dark"] body, :root[data-style="forest"][data-theme="dark"] .zen { background-image: linear-gradient(var(--veil), var(--veil)), url("../../img/forest.jpg"); }
 [data-style="forest"] :is(.pane, .a-grid, .cal, .banner, .welcome, .setup, .day > .quote) { -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+[data-style="forest"] .top { background-color: color-mix(in srgb, var(--surface-solid) 80%, transparent); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); padding-inline: 14px; border: 1px solid var(--line); border-radius: var(--r); margin-top: 10px; }
+[data-style="forest"] body::before { background: transparent; }

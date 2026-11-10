@@ -20,6 +20,15 @@ Setup in the Firebase project's Google Cloud: enable the Google Calendar API, ad
 
 The **Day options ▾** menu on each day holds **Finish day**, **Journal** (a free-writing space saved with that day), **Add routine** when needed, and **Clear day** (deletes everything on that day after a confirmation, with Undo). On a finished day it offers Reopen day and Edit reflection. The journal icon in the top bar shows all journal entries, newest first, with Edit and Open day links.
 
+## Photo credits
+
+The photo styles use pictures from Wikimedia Commons, slightly blurred, dimmed or tiled:
+
+- River Stone: [Ryōan-ji zen garden](https://commons.wikimedia.org/wiki/File:Le_jardin_zen_du_temple_Ry%C3%B4an-ji_(Kyoto,_Japon)_(32162405237).jpg) by Jean-Pierre Dalbéra, [CC BY 2.0](https://creativecommons.org/licenses/by/2.0/)
+- Pine Forest: [Pines in fog](https://commons.wikimedia.org/wiki/File:Nature-forest-trees-fog.jpg) by Jaymantri (Pexels), free to use
+- Oak Desk: [Oak texture](https://commons.wikimedia.org/wiki/File:Oak_Texture_-_5106733699_c1d5b0df29_b.jpg) by William Warby, [CC BY 2.0](https://creativecommons.org/licenses/by/2.0/)
+- Desert Dune: [Thar Desert sand dunes](https://commons.wikimedia.org/wiki/File:Thar_Desert,_India,_Sand_dunes.jpg) © Vyacheslav Argenberg, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)
+
 ## Zen mode
 
 The circle button in the top bar hides everything except the box you're in right now, shown big, with a circle that slowly fills as its time passes. Back-to-back boxes with the same name count as one block. Press Esc or the small × to leave.
