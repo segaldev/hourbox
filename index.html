@@ -1288,7 +1288,9 @@ function openFinish(editOnly) { // editOnly: change the reflection of a finished
 
 // ---------- Google Calendar import (read-only for now) ----------
 // Each imported box keeps its event id in box.cal, so a later version can write changes back.
-const CAL_SCOPE = "https://www.googleapis.com/auth/calendar.events"; // read and write events
+// Hourbox only reads your calendar. Set CAL_WRITE to true to also send changes back (moves, renames, your own boxes).
+const CAL_WRITE = false;
+const CAL_SCOPE = CAL_WRITE ? "https://www.googleapis.com/auth/calendar.events" : "https://www.googleapis.com/auth/calendar.events.readonly";
 const Cal = {
   token: null, exp: 0,
   cached() {
@@ -1412,7 +1414,7 @@ async function buildSync(d0, k, remote, opts, api) {
   const d = clone(d0), events = remote.map(e => clone(e)), dayStart = parseKey(k).getTime(), push = [], failed = [];
   const iso = m => new Date(dayStart + m * 60000).toISOString(), byId = id => events.find(e => e.id === id);
   const groups = localGroups(d);
-  for (const g of Object.values(groups)) {
+  if (CAL_WRITE) for (const g of Object.values(groups)) {
     const c = g.b.cal, base = c.base, ev = byId(g.id); if (!base || !ev) continue;
     const text = g.b.text.trim(), moved = g.start !== base.start || g.end !== base.end, renamed = text !== base.summary;
     if (!moved && !renamed) continue;
@@ -1426,13 +1428,13 @@ async function buildSync(d0, k, remote, opts, api) {
     catch (e) { if (e && (e.code === "expired" || e.code === "scope")) throw e; failed.push(text); }
   }
   const out = new Set(d.calOut || []); // events Hourbox created for this day
-  for (const id of [...out]) {
+  if (CAL_WRITE) for (const id of [...out]) {
     if (groups[id]) continue; out.delete(id);
     const ev = byId(id); if (!ev) continue;
     try { await api.remove(id); events.splice(events.indexOf(ev), 1); push.push({ kind: "delete", title: ev.summary || "" }); }
     catch (e) { if (e && (e.code === "expired" || e.code === "scope")) throw e; if (e && e.code === "gone") continue; failed.push(ev.summary || ""); out.add(id); }
   }
-  if (opts.own) for (const r of ownRuns(d, opts.routine)) {
+  if (CAL_WRITE && opts.own) for (const r of ownRuns(d, opts.routine)) {
     try {
       const ev = await api.insert({ summary: r.text, start: { dateTime: iso(r.start) }, end: { dateTime: iso(r.end) }, description: "Planned in Hourbox", extendedProperties: { private: { hourbox: "1" } } });
       events.push(ev); out.add(ev.id);
@@ -1479,6 +1481,7 @@ async function openCalPreview(k, events, token) {
     const pull = sim.rows.filter(r => r.kind !== "same").map(r => `<div class="cal-row k-${r.kind}"><span class="cal-kind">${label[r.kind]}</span><span class="cal-title">${esc(r.title)}</span>
       <span class="cal-sub">${r.kind === "overlap" ? `${esc(r.range)} · overlaps “${esc(r.with)}”` : r.kind === "allday" ? "Not placed in a box" : r.kind === "removed" ? "Its box will be removed" : esc(r.range || "")}${r.movedAside && r.movedAside.length ? ` · moves “${esc(r.movedAside[0])}” aside` : ""}</span></div>`).join("")
       + (same.length ? `<p class="hint" style="margin:6px 0 0">${same.length} event${same.length > 1 ? "s are" : " is"} already up to date: ${same.map(r => esc(r.title)).join(", ")}.</p>` : "");
+    if (!CAL_WRITE) return pull || `<p class="hint">No events on your Google Calendar for this day.</p>`;
     return `<p class="sect-title">To Google Calendar</p>${push || `<p class="hint">Nothing to send.</p>`}
       <p class="sect-title" style="margin-top:14px">From Google Calendar</p>${pull || `<p class="hint">No events on your Google Calendar for this day.</p>`}`;
   };
@@ -1487,15 +1490,15 @@ async function openCalPreview(k, events, token) {
   const ov = openModal(`
     <header><span class="eyebrow">${parseKey(k).toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" })} · Google Calendar</span><h3>Sync calendar</h3></header>
     <div class="body">
-      <div class="chips-col">
+      <div class="chips-col" ${CAL_WRITE ? "" : "hidden"}>
         <label class="flexchk" for="cal-own"><input type="checkbox" class="check" id="cal-own" ${opts.own ? "checked" : ""}> Add my own boxes to Google Calendar</label>
         <label class="flexchk" for="cal-routine"><input type="checkbox" class="check" id="cal-routine" ${opts.routine ? "checked" : ""} ${opts.own ? "" : "disabled"}> Include routine boxes (Get ready, Walk…)</label>
       </div>
       <div class="cal-list" id="cal-list">${listHTML()}</div>
       <label class="flexchk" for="cal-dump" id="cal-dump-wrap" ${skippedN() ? "" : "hidden"}><input type="checkbox" class="check" id="cal-dump" checked> Put events that don’t fit in the brain dump</label>
-      <p class="hint">Only this day changes. Boxes you planned yourself are never overwritten, and meetings you didn’t create are never deleted.</p>
+      <p class="hint">${CAL_WRITE ? "Only this day changes. Boxes you planned yourself are never overwritten, and meetings you didn’t create are never deleted." : "Hourbox only reads your calendar and never changes it. Only this day’s boxes change, and boxes you planned yourself are never overwritten."}</p>
     </div>
-    <footer><button class="btn" data-m="cancel" id="cal-cancel">Cancel</button><button class="btn primary" data-m="apply" id="cal-apply" ${anyChange() ? "" : "disabled"}>Sync</button></footer>`,
+    <footer><button class="btn" data-m="cancel" id="cal-cancel">Cancel</button><button class="btn primary" data-m="apply" id="cal-apply" ${anyChange() ? "" : "disabled"}>${anyChange() ? (CAL_WRITE ? "Sync" : "Add to this day") : "Nothing to change"}</button></footer>`,
     async btn => {
       if (btn.dataset.m === "cancel") { closeModal(); return; }
       if (btn.dataset.m !== "apply") return;
