@@ -1,0 +1,20 @@
+/* Desert Dune: soft dunes under a pale dawn, or a starry night. The picture is drawn by a script (img/dune-light.webp, img/dune-dark.webp). */
+:root[data-style="dune"] {
+  --r: 14px; --r-s: 10px; --check-r: 50%; --check-off-r: 50%; --bg-image: none; --cell-out-image: none; --bg-size: cover; --bg-repeat: no-repeat; --bg-pos: center bottom; --box-bg: var(--sunk); --box-border: transparent; --done-fill: var(--done); --done-mark: var(--surface-solid); --pri-bg: var(--accent); --pri-fg: var(--accent-ink); --pri-bd: var(--accent); --pri-hbg: var(--accent); --pri-hfg: var(--accent-ink); --frame: var(--line);
+  --f-display: "Marcellus", Georgia, serif; --f-body: "Jost", -apple-system, "Segoe UI", system-ui, sans-serif; --f-mono: "Jost", -apple-system, system-ui, sans-serif;
+  --desk: #F1E6DC; --paper: #F6EDE5; --surface: rgba(255,251,247,.82); --surface-solid: #FFFBF7; --sunk: rgba(245,233,222,.92); --ink: #3A2A22; --muted: #7C675A; --line: rgba(170,130,100,.22); --accent: #A5603B; --accent-ink: #FFF8F2; --accent-soft: #F3E0D3; --now: #C0533A; --done: #7C8A5A; --partial: #C8963F; --skipped: #9C8C80; --t-deep: #5C6F9A; --t-meet: #6F8A6A; --t-admin: #C8963F; --t-personal: #A86478;
+  --shadow: 0 1px 2px rgba(30,30,30,.05), 0 8px 24px rgba(30,30,30,.07); --overlay: rgba(30,28,25,.35);
+}
+@media (prefers-color-scheme: dark) { :root[data-style="dune"]:not([data-theme="light"]) {
+  --desk: #1C1A2C; --paper: #211E32; --surface: rgba(34,30,48,.8); --surface-solid: #242032; --sunk: rgba(48,42,64,.88); --ink: #EEE6EC; --muted: #A99CB0; --line: rgba(200,180,210,.15); --accent: #E6A982; --accent-ink: #1C1A2C; --accent-soft: #3A2F3E; --now: #F0B488; --done: #B5C49A; --partial: #E3BC7A; --skipped: #8A8296; --t-deep: #A3B4E6; --t-meet: #A6CDB0; --t-admin: #E3BC7A; --t-personal: #E3A2BE;
+  --shadow: 0 1px 2px rgba(0,0,0,.35), 0 10px 30px rgba(0,0,0,.3); --overlay: rgba(0,0,0,.55); color-scheme: dark; } }
+:root[data-style="dune"][data-theme="dark"] {
+  --desk: #1C1A2C; --paper: #211E32; --surface: rgba(34,30,48,.8); --surface-solid: #242032; --sunk: rgba(48,42,64,.88); --ink: #EEE6EC; --muted: #A99CB0; --line: rgba(200,180,210,.15); --accent: #E6A982; --accent-ink: #1C1A2C; --accent-soft: #3A2F3E; --now: #F0B488; --done: #B5C49A; --partial: #E3BC7A; --skipped: #8A8296; --t-deep: #A3B4E6; --t-meet: #A6CDB0; --t-admin: #E3BC7A; --t-personal: #E3A2BE;
+  --shadow: 0 1px 2px rgba(0,0,0,.35), 0 10px 30px rgba(0,0,0,.3); --overlay: rgba(0,0,0,.55); color-scheme: dark; }
+/* the picture: set here so its path is relative to this file */
+:root[data-style="dune"], :root[data-style="dune"] body, :root[data-style="dune"] .top { background-image: url("../../img/dune-light.webp"); }
+@media (prefers-color-scheme: dark) { :root[data-style="dune"]:not([data-theme="light"]), :root[data-style="dune"]:not([data-theme="light"]) body, :root[data-style="dune"]:not([data-theme="light"]) .top { background-image: url("../../img/dune-dark.webp"); } }
+:root[data-style="dune"][data-theme="dark"], :root[data-style="dune"][data-theme="dark"] body, :root[data-style="dune"][data-theme="dark"] .top { background-image: url("../../img/dune-dark.webp"); }
+[data-style="dune"] :is(.pane, .a-grid, .cal, .banner, .welcome, .setup) { -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+[data-style="dune"] :is(.btn, .chip, .seg, .seg button, .iconbtn, .dchip) { border-radius: 999px; }
+[data-style="dune"] :is(.brand, .pane h2, .gridhead h2, .modal h3, .welcome-brand h1, .jentry h2, .journal-list > h1) { font-weight: 400; letter-spacing: .01em; }

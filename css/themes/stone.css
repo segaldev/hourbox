@@ -1,0 +1,19 @@
+/* River Stone: a raked zen garden with smooth stones. The picture is drawn by a script (img/stone-light.webp, img/stone-dark.webp). */
+:root[data-style="stone"] {
+  --r: 10px; --r-s: 7px; --check-r: 50%; --check-off-r: 50%; --bg-image: none; --cell-out-image: none; --bg-size: cover; --bg-repeat: no-repeat; --bg-pos: right bottom; --box-bg: var(--sunk); --box-border: transparent; --done-fill: var(--done); --done-mark: var(--surface-solid); --pri-bg: var(--accent); --pri-fg: var(--accent-ink); --pri-bd: var(--accent); --pri-hbg: var(--accent); --pri-hfg: var(--accent-ink); --frame: var(--line);
+  --f-display: "Cormorant Garamond", Georgia, serif; --f-body: "Karla", -apple-system, "Segoe UI", system-ui, sans-serif; --f-mono: "Karla", -apple-system, system-ui, sans-serif;
+  --desk: #ECEAE4; --paper: #F2F1EC; --surface: rgba(250,249,246,.84); --surface-solid: #FAF9F6; --sunk: rgba(232,230,224,.92); --ink: #262A2C; --muted: #666B6C; --line: rgba(110,112,108,.24); --accent: #4F5F68; --accent-ink: #F5F6F4; --accent-soft: #E1E5E6; --now: #A3653A; --done: #5E7A64; --partial: #B0894A; --skipped: #8E908C; --t-deep: #4F5F68; --t-meet: #5E7A64; --t-admin: #A88850; --t-personal: #93707A;
+  --shadow: 0 1px 2px rgba(30,30,30,.05), 0 8px 24px rgba(30,30,30,.07); --overlay: rgba(30,28,25,.35);
+}
+@media (prefers-color-scheme: dark) { :root[data-style="stone"]:not([data-theme="light"]) {
+  --desk: #1B1C1C; --paper: #202121; --surface: rgba(34,36,36,.84); --surface-solid: #232525; --sunk: rgba(48,51,51,.9); --ink: #E4E5E2; --muted: #A0A39F; --line: rgba(200,205,200,.13); --accent: #A9BAC4; --accent-ink: #161818; --accent-soft: #2C3438; --now: #D9A076; --done: #9DBBA2; --partial: #D6B47A; --skipped: #8A8D8A; --t-deep: #A9BAC4; --t-meet: #9DBBA2; --t-admin: #D6B47A; --t-personal: #C9A3AE;
+  --shadow: 0 1px 2px rgba(0,0,0,.35), 0 10px 30px rgba(0,0,0,.3); --overlay: rgba(0,0,0,.55); color-scheme: dark; } }
+:root[data-style="stone"][data-theme="dark"] {
+  --desk: #1B1C1C; --paper: #202121; --surface: rgba(34,36,36,.84); --surface-solid: #232525; --sunk: rgba(48,51,51,.9); --ink: #E4E5E2; --muted: #A0A39F; --line: rgba(200,205,200,.13); --accent: #A9BAC4; --accent-ink: #161818; --accent-soft: #2C3438; --now: #D9A076; --done: #9DBBA2; --partial: #D6B47A; --skipped: #8A8D8A; --t-deep: #A9BAC4; --t-meet: #9DBBA2; --t-admin: #D6B47A; --t-personal: #C9A3AE;
+  --shadow: 0 1px 2px rgba(0,0,0,.35), 0 10px 30px rgba(0,0,0,.3); --overlay: rgba(0,0,0,.55); color-scheme: dark; }
+/* the picture: set here so its path is relative to this file */
+:root[data-style="stone"], :root[data-style="stone"] body, :root[data-style="stone"] .top { background-image: url("../../img/stone-light.webp"); }
+@media (prefers-color-scheme: dark) { :root[data-style="stone"]:not([data-theme="light"]), :root[data-style="stone"]:not([data-theme="light"]) body, :root[data-style="stone"]:not([data-theme="light"]) .top { background-image: url("../../img/stone-dark.webp"); } }
+:root[data-style="stone"][data-theme="dark"], :root[data-style="stone"][data-theme="dark"] body, :root[data-style="stone"][data-theme="dark"] .top { background-image: url("../../img/stone-dark.webp"); }
+[data-style="stone"] :is(.pane, .a-grid, .cal, .banner, .welcome, .setup) { -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+[data-style="stone"] :is(.brand, .pane h2, .gridhead h2, .modal h3, .welcome-brand h1, .jentry h2, .journal-list > h1) { font-weight: 600; }
