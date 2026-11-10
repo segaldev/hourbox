@@ -1108,7 +1108,11 @@ document.addEventListener("click", e => {
   const act = t.dataset.act, k = S.date;
   const ro = S.view === "day" && getDay(k).finished;
   switch (act) {
-    case "journal-view": if (S.mode === "setup") break; S.view = S.view === "journal" && !S.showSetup ? "day" : "journal"; S.showSetup = false; S.placing = null; S.dayMenu = false; render(); window.scrollTo(0, 0); break;
+    case "journal-view": {
+      if (S.mode === "setup") break;
+      const onDay = S.view === "day" && !S.showSetup;
+      if (onDay && !(getDay(S.date).journal || "").trim()) { S.dayMenu = false; render(); askJournal(); break; } // nothing written for this day yet
+      S.view = S.view === "journal" && !S.showSetup ? "day" : "journal"; S.showSetup = false; S.placing = null; S.dayMenu = false; render(); window.scrollTo(0, 0); break; }
     case "journal-edit": openJournal(t.dataset.k); break;
     case "journal-open": S.date = t.dataset.k; S.view = "day"; render(); window.scrollTo(0, 0); break;
     case "view": S.view = t.dataset.v; S.placing = null; if (S.mode !== "setup") S.showSetup = false; render(); break;
@@ -1305,6 +1309,17 @@ function openBoxEditor(h) {
   inp.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); ov.querySelector("#be-save").click(); } });
 }
 
+function askJournal() {
+  const k = S.date, d = parseKey(k), name = k === todayKey() ? "today" : d.toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" });
+  openModal(`
+    <header><span class="eyebrow">Journal</span><h3>Write for ${esc(name)}?</h3></header>
+    <div class="body"><p style="margin:0 0 10px">There’s no journal entry for ${esc(name)} yet.</p></div>
+    <footer><button class="btn" data-m="all" id="aj-all">See all entries</button><button class="btn primary" data-m="write" id="aj-write">Write for ${esc(name)}</button></footer>`, btn => {
+      if (btn.dataset.m === "write") { closeModal(); openJournal(k); }
+      if (btn.dataset.m === "all") { $("#modal-root").innerHTML = ""; S.view = "journal"; render(); window.scrollTo(0, 0); }
+    });
+  $("#aj-write").focus();
+}
 function renderJournalList() {
   const entries = Object.keys(S.docs).filter(id => id.startsWith("day-") && (S.docs[id].journal || "").trim())
     .map(id => id.slice(4)).sort().reverse();
