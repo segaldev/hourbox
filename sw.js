@@ -1,5 +1,6 @@
-// Hourbox service worker: only used to show notifications and handle their buttons.
-// It does not cache pages or intercept any requests.
+// Hourbox service worker: shows notifications and handles their buttons, and makes sure the app's own
+// files are always the latest version. It stores nothing: each file is checked with the server
+// (a quick "not changed" answer when it hasn't), so a new version never mixes with old cached files.
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", e => e.waitUntil(self.clients.claim()));
 self.addEventListener("notificationclick", e => {
@@ -15,4 +16,9 @@ self.addEventListener("notificationclick", e => {
     if (win) return win.focus();
     return self.clients.openWindow("./");
   })());
+});
+self.addEventListener("fetch", e => {
+  const r = e.request, u = new URL(r.url);
+  if (r.method !== "GET" || u.origin !== self.location.origin) return; // Firebase, Google and fonts go straight through
+  e.respondWith(fetch(u.href, { cache: "no-cache", credentials: "same-origin" }).catch(() => fetch(r)));
 });

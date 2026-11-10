@@ -24,5 +24,7 @@ setAppearance(getAppearance());
 syncThemeColor();
 renderHeader();
 Store.init();
+// Always load the newest app files after an update (see sw.js)
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
 
 export { lastDay };
