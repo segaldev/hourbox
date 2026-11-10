@@ -1,0 +1,32 @@
+/* Washi (the default style): tokens every style starts from. */
+:root {
+/* Washi: Japanese notebook minimalism. Dot-grid paper, sumi ink, aizome indigo, one vermilion seal for "now" and "done". */
+  --desk: #EEECE6; --paper: #F4F2EC; --surface: #FAF9F5; --sunk: #F0EEE8; --ink: #1E1D1B; --muted: #6F6A61; --line: #D8D3C8;
+  --accent: #2D4868; --accent-ink: #F6F5F1; --accent-soft: #E2E6EB; --now: #B4432E;
+  --done: #B4432E; --partial: #A8792A; --skipped: #7A746A;
+  --t-deep: #2D4868; --t-meet: #4F7A6B; --t-admin: #A8792A; --t-personal: #8A5A6E;
+  --shadow: 0 1px 0 rgba(30,29,27,.04);
+  --overlay: rgba(30,29,27,.35); --dots: rgba(30,29,27,.17); --glow: transparent; --surface-solid: var(--surface);
+  /* shape and texture, which each style can change */
+  --r: 3px; --r-s: 2px;
+  --bg-image: radial-gradient(var(--dots) .9px, transparent 1.15px); --bg-size: 16px 16px; --bg-pos: 0 0; --bg-repeat: repeat; --cell-out-image: var(--bg-image);
+  --box-bg: var(--surface); --box-border: var(--line); --done-fill: transparent; --done-mark: var(--done); --check-r: 50%; --check-off-r: 2px;
+  --pri-bg: var(--surface); --pri-fg: var(--ink); --pri-bd: var(--ink); --pri-hbg: var(--ink); --pri-hfg: var(--surface); --frame: var(--ink);
+  --f-display: "Shippori Mincho", "Hiragino Mincho ProN", "Yu Mincho", Georgia, serif;
+  --f-body: "Zen Kaku Gothic New", -apple-system, "Hiragino Sans", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "Zen Kaku Gothic New", -apple-system, "Hiragino Sans", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --desk: #151513; --paper: #191917; --surface: #1D1D1B; --sunk: #232320; --ink: #E8E5DE; --muted: #A29C90; --line: #33322E;
+  --accent: #93ADCB; --accent-ink: #151513; --accent-soft: #26303B; --now: #E2735C;
+  --done: #E2735C; --partial: #D6A65A; --skipped: #8E897F;
+  --t-deep: #93ADCB; --t-meet: #8DBAA9; --t-admin: #D6A65A; --t-personal: #C99AB0;
+  --shadow: 0 1px 0 rgba(0,0,0,.2);
+  --overlay: rgba(0,0,0,.55); --dots: rgba(232,229,222,.10); color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --desk: #151513; --paper: #191917; --surface: #1D1D1B; --sunk: #232320; --ink: #E8E5DE; --muted: #A29C90; --line: #33322E;
+  --accent: #93ADCB; --accent-ink: #151513; --accent-soft: #26303B; --now: #E2735C;
+  --done: #E2735C; --partial: #D6A65A; --skipped: #8E897F;
+  --t-deep: #93ADCB; --t-meet: #8DBAA9; --t-admin: #D6A65A; --t-personal: #C99AB0;
+  --shadow: 0 1px 0 rgba(0,0,0,.2);
+  --overlay: rgba(0,0,0,.55); --dots: rgba(232,229,222,.10); color-scheme: dark; }

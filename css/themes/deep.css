@@ -1,0 +1,23 @@
+/* Deep Water */
+:root[data-style="deep"] {
+  --r: 8px; --r-s: 6px; --bg-image: radial-gradient(var(--dots) 1px, transparent 1.2px); --bg-size: 18px 18px; --bg-pos: 0 0; --bg-repeat: repeat; --cell-out-image: var(--bg-image);
+  --box-bg: var(--sunk); --box-border: transparent; --done-fill: var(--done); --done-mark: var(--surface); --check-r: 4px; --check-off-r: 4px;
+  --pri-bg: var(--accent); --pri-fg: var(--accent-ink); --pri-bd: var(--accent); --pri-hbg: var(--accent); --pri-hfg: var(--accent-ink); --frame: var(--line);
+  --f-display: "Manrope", -apple-system, system-ui, sans-serif; --f-body: "Manrope", -apple-system, system-ui, sans-serif; --f-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  --desk: #E7EFF2; --paper: #EEF4F6; --surface: #F7FAFB; --sunk: #DCE7EC; --ink: #12262F; --muted: #50687A; --line: #C8D8E0;
+  --accent: #1C7479; --accent-ink: #F2F8F9; --accent-soft: #D3E6E8; --now: #C2861C; --done: #1C7479; --partial: #B9852A; --skipped: #7C8F99;
+  --t-deep: #3E64A8; --t-meet: #2F8A7E; --t-admin: #B47E2A; --t-personal: #B0507A;
+  --shadow: 0 1px 2px rgba(18,38,47,.06); --overlay: rgba(18,38,47,.4); --dots: rgba(18,38,47,.08); --glow: rgba(28,116,121,.18); --surface-solid: #F7FAFB;
+}
+@media (prefers-color-scheme: dark) { :root[data-style="deep"]:not([data-theme="light"]) {
+  --desk: #0C1A23; --paper: #0F1F29; --surface: #11232E; --sunk: #17303E; --ink: #DCE8EE; --muted: #86A0AF; --line: #1F3747;
+  --accent: #6CC6C2; --accent-ink: #08151C; --accent-soft: #163A43; --now: #F2C46D; --done: #6CC6C2; --partial: #E3B866; --skipped: #6F8A98;
+  --t-deep: #8FB4F0; --t-meet: #7FD3C1; --t-admin: #E3B866; --t-personal: #E59FB8;
+  --shadow: 0 1px 2px rgba(0,0,0,.35); --overlay: rgba(0,0,0,.6); --dots: rgba(160,200,220,.10); --glow: rgba(108,198,194,.28); --surface-solid: #11232E; color-scheme: dark; } }
+:root[data-style="deep"][data-theme="dark"] {
+  --desk: #0C1A23; --paper: #0F1F29; --surface: #11232E; --sunk: #17303E; --ink: #DCE8EE; --muted: #86A0AF; --line: #1F3747;
+  --accent: #6CC6C2; --accent-ink: #08151C; --accent-soft: #163A43; --now: #F2C46D; --done: #6CC6C2; --partial: #E3B866; --skipped: #6F8A98;
+  --t-deep: #8FB4F0; --t-meet: #7FD3C1; --t-admin: #E3B866; --t-personal: #E59FB8;
+  --shadow: 0 1px 2px rgba(0,0,0,.35); --overlay: rgba(0,0,0,.6); --dots: rgba(160,200,220,.10); --glow: rgba(108,198,194,.28); --surface-solid: #11232E; color-scheme: dark; }
+[data-style="deep"] .hour.now .box.filled, [data-style="deep"] .box.filled.nowslot { box-shadow: 0 0 0 1px var(--accent), 0 0 22px var(--glow); }
+[data-style="deep"] .nowline { box-shadow: 0 0 10px var(--now); }

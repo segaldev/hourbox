@@ -1,0 +1,27 @@
+/* Morning Mist */
+:root[data-style="mist"] {
+  --r: 14px; --r-s: 10px; --bg-image: radial-gradient(40% 50% at 10% 12%, var(--b1), transparent 70%), radial-gradient(45% 55% at 95% 25%, var(--b2), transparent 70%), radial-gradient(45% 45% at 55% 105%, var(--b3), transparent 70%);
+  --bg-size: 100% 100%; --bg-pos: 0 0; --bg-repeat: no-repeat; --cell-out-image: none;
+  --box-bg: var(--sunk); --box-border: transparent; --done-fill: var(--done); --done-mark: var(--surface-solid); --check-r: 50%; --check-off-r: 50%;
+  --pri-bg: var(--accent); --pri-fg: var(--accent-ink); --pri-bd: var(--accent); --pri-hbg: var(--accent); --pri-hfg: var(--accent-ink); --frame: var(--line);
+  --f-display: "Instrument Serif", Georgia, serif; --f-body: "Albert Sans", -apple-system, system-ui, sans-serif; --f-mono: "Albert Sans", -apple-system, system-ui, sans-serif;
+  --desk: #F0F1F7; --paper: #F4F5FA; --surface: rgba(255,255,255,.68); --surface-solid: #FBFBFE; --sunk: rgba(226,229,244,.85); --ink: #222436; --muted: #646882; --line: rgba(150,156,195,.38);
+  --accent: #5862B6; --accent-ink: #F7F7FD; --accent-soft: #E3E5F6; --now: #E0896A; --done: #6F8FC7; --partial: #C99A5A; --skipped: #8E91A8;
+  --t-deep: #5862B6; --t-meet: #4E93A0; --t-admin: #C08A4A; --t-personal: #C46F8C;
+  --shadow: 0 1px 2px rgba(34,36,54,.05), 0 8px 24px rgba(34,36,54,.06); --overlay: rgba(34,36,54,.35); --b1: #D8D9F4; --b2: #CFE3F4; --b3: #F6DDD3;
+}
+@media (prefers-color-scheme: dark) { :root[data-style="mist"]:not([data-theme="light"]) {
+  --desk: #14151E; --paper: #191A25; --surface: rgba(32,34,50,.68); --surface-solid: #1E2030; --sunk: rgba(44,47,70,.85); --ink: #E4E5F1; --muted: #9DA0BC; --line: rgba(140,146,190,.24);
+  --accent: #9CA5F2; --accent-ink: #14151E; --accent-soft: #2A2D4A; --now: #F0A487; --done: #8FAAE0; --partial: #E0B27A; --skipped: #7E819C;
+  --t-deep: #9CA5F2; --t-meet: #7FC3CF; --t-admin: #E0B27A; --t-personal: #E59AB5;
+  --shadow: 0 1px 2px rgba(0,0,0,.3); --overlay: rgba(0,0,0,.55); --b1: #2A2C5A; --b2: #1B3550; --b3: #43283A; color-scheme: dark; } }
+:root[data-style="mist"][data-theme="dark"] {
+  --desk: #14151E; --paper: #191A25; --surface: rgba(32,34,50,.68); --surface-solid: #1E2030; --sunk: rgba(44,47,70,.85); --ink: #E4E5F1; --muted: #9DA0BC; --line: rgba(140,146,190,.24);
+  --accent: #9CA5F2; --accent-ink: #14151E; --accent-soft: #2A2D4A; --now: #F0A487; --done: #8FAAE0; --partial: #E0B27A; --skipped: #7E819C;
+  --t-deep: #9CA5F2; --t-meet: #7FC3CF; --t-admin: #E0B27A; --t-personal: #E59AB5;
+  --shadow: 0 1px 2px rgba(0,0,0,.3); --overlay: rgba(0,0,0,.55); --b1: #2A2C5A; --b2: #1B3550; --b3: #43283A; color-scheme: dark; }
+[data-style="mist"] :is(.pane, .a-grid, .cal, .banner, .welcome) { -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); }
+[data-style="mist"] :is(.btn, .chip, .seg, .seg button, .iconbtn, .dchip) { border-radius: 999px; }
+[data-style="mist"] :is(.brand, .pane h2, .gridhead h2, .modal h3, .sect-title, .jentry h2, .journal-list > h1, .welcome-brand h1, .welcome-lead, .datepick label, .stat b, .dcell .dn > span:first-child, .cal-head div) { font-weight: 400; }
+[data-style="mist"] :is(.brand, .pane h2, .gridhead h2, .modal h3, .welcome-brand h1, .jentry h2, .journal-list > h1) { font-style: italic; letter-spacing: 0; }
+[data-style="mist"] :is(.brand) { font-size: 25px; } [data-style="mist"] :is(.pane h2) { font-size: 19px; } [data-style="mist"] .gridhead h2 { font-size: 23px; }

@@ -1,0 +1,25 @@
+/* Sage Garden */
+:root[data-style="sage"] {
+  --r: 12px; --r-s: 8px; --bg-size: min(620px, 90vw); --bg-pos: right -14vw bottom -18vh; --bg-repeat: no-repeat; --cell-out-image: none;
+  --box-bg: var(--sunk); --box-border: transparent; --done-fill: var(--done); --done-mark: var(--surface); --check-r: 5px; --check-off-r: 5px;
+  --pri-bg: var(--accent); --pri-fg: var(--accent-ink); --pri-bd: var(--accent); --pri-hbg: var(--accent); --pri-hfg: var(--accent-ink); --frame: var(--line);
+  --f-display: "Newsreader", Georgia, serif; --f-body: "Figtree", -apple-system, "Segoe UI", system-ui, sans-serif; --f-mono: "Figtree", -apple-system, system-ui, sans-serif;
+  --desk: #EDF1EB; --paper: #F3F6F1; --surface: #FAFBF8; --sunk: #E3E9E1; --ink: #1F2A24; --muted: #627068; --line: #D3DCD1;
+  --accent: #4D7A61; --accent-ink: #F6F9F5; --accent-soft: #DDE8DF; --now: #C58A3E; --done: #4D7A61; --partial: #B7862E; --skipped: #8A948D;
+  --t-deep: #4F6E8C; --t-meet: #3F7F75; --t-admin: #B07A2A; --t-personal: #A86A7C;
+  --shadow: 0 1px 2px rgba(31,42,36,.05), 0 4px 14px rgba(31,42,36,.05); --overlay: rgba(31,42,36,.35); --surface-solid: #FAFBF8;
+  --bg-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath fill='%234D7A61' fill-opacity='.07' d='M12 88C10 45 40 12 90 10c2 50-30 80-78 78z'/%3E%3Cpath d='M16 84Q48 52 86 14' stroke='%234D7A61' stroke-opacity='.07' stroke-width='.7' fill='none'/%3E%3C/svg%3E");
+}
+@media (prefers-color-scheme: dark) { :root[data-style="sage"]:not([data-theme="light"]) {
+  --desk: #131A16; --paper: #161E1A; --surface: #1A231E; --sunk: #222D27; --ink: #E3EAE4; --muted: #95A49B; --line: #2C3932;
+  --accent: #8DBB9F; --accent-ink: #131A16; --accent-soft: #24342B; --now: #E0A862; --done: #8DBB9F; --partial: #D9B26A; --skipped: #7F8B84;
+  --t-deep: #93B2D1; --t-meet: #7FC1B4; --t-admin: #D9AE6A; --t-personal: #D69CAD;
+  --shadow: 0 1px 2px rgba(0,0,0,.3); --overlay: rgba(0,0,0,.55); --surface-solid: #1A231E;
+  --bg-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath fill='%238DBB9F' fill-opacity='.05' d='M12 88C10 45 40 12 90 10c2 50-30 80-78 78z'/%3E%3Cpath d='M16 84Q48 52 86 14' stroke='%238DBB9F' stroke-opacity='.05' stroke-width='.7' fill='none'/%3E%3C/svg%3E"); color-scheme: dark; } }
+:root[data-style="sage"][data-theme="dark"] {
+  --desk: #131A16; --paper: #161E1A; --surface: #1A231E; --sunk: #222D27; --ink: #E3EAE4; --muted: #95A49B; --line: #2C3932;
+  --accent: #8DBB9F; --accent-ink: #131A16; --accent-soft: #24342B; --now: #E0A862; --done: #8DBB9F; --partial: #D9B26A; --skipped: #7F8B84;
+  --t-deep: #93B2D1; --t-meet: #7FC1B4; --t-admin: #D9AE6A; --t-personal: #D69CAD;
+  --shadow: 0 1px 2px rgba(0,0,0,.3); --overlay: rgba(0,0,0,.55); --surface-solid: #1A231E;
+  --bg-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath fill='%238DBB9F' fill-opacity='.05' d='M12 88C10 45 40 12 90 10c2 50-30 80-78 78z'/%3E%3Cpath d='M16 84Q48 52 86 14' stroke='%238DBB9F' stroke-opacity='.05' stroke-width='.7' fill='none'/%3E%3C/svg%3E"); color-scheme: dark; }
+[data-style="sage"] .top { background-image: none; }
