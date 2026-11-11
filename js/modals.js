@@ -1,8 +1,9 @@
 import { summarize } from "./day.js";
 import { render } from "./render.js";
+import { STEP, boxToItem, fits, overlaps, putBox, roomAt } from "./boxes.js";
 import { S, blankDay, getDay, mutateDay, mutatePark } from "./state.js";
 import { toast } from "./ui.js";
-import { $, ICON, TAGS, addDays, clone, esc, hourOfKey, lenOfKey, minOfKey, nextSlot, parseKey, rid, slotRange, sortedKeys, timeLabel, todayKey } from "./util.js";
+import { $, ICON, TAGS, addDays, clone, esc, fmtDur, lenOfKey, minOfKey, parseKey, rid, sortedKeys, timeLabel, todayKey } from "./util.js";
 
 // ---------- modals ----------
 const modalOpen = () => !!$("#modal-root").firstChild;
@@ -15,15 +16,32 @@ function openModal(html, onClick) {
   return ov;
 }
 
-function openBoxEditor(h) {
-  const k = S.date, d = getDay(k), b = d.boxes[h] ? clone(d.boxes[h]) : { text: "", tag: "", status: "planned" };
-  const isNew = !d.boxes[h], len = lenOfKey(d, h), nk = nextSlot(d, h);
+const LEN_CHIPS = [10, 20, 30, 45, 60, 90, 120];
+// Edit a box (h = its key), or make a new one starting at minute `newStart`.
+function openBoxEditor(h, newStart) {
+  const k = S.date, d = getDay(k), isNew = h == null || !d.boxes[h], skip = isNew ? null : h;
+  const b = isNew ? { text: "", tag: "", status: "planned" } : clone(d.boxes[h]);
+  let start = isNew ? newStart : minOfKey(h);
+  let len = isNew ? Math.max(STEP, Math.min(60, roomAt(d, start))) : lenOfKey(d, h);
   const tagChips = () => TAGS.map(([v, n]) => `<button class="chip tag-chip ${v ? "tg-" + v : ""}" data-m="tag" data-v="${v}" aria-pressed="${(b.tag || "") === v}">${n}</button>`).join("");
   const stChips = () => [["planned", "Planned"], ["done", "Done"], ["partial", "Partly done"], ["skipped", "Skipped"]].map(([v, n]) => `<button class="chip s-${v}" data-m="st" data-v="${v}" aria-pressed="${(b.status || "planned") === v}">${n}</button>`).join("");
+  const timeHTML = () => {
+    const ok = fits(d, start, len, skip), clash = ok ? null : overlaps(d, start, len, skip)[0];
+    let room = 0; while (fits(d, start, room + STEP, skip)) room += STEP;
+    const lens = LEN_CHIPS.includes(len) ? LEN_CHIPS : LEN_CHIPS.concat(len).sort((x, y) => x - y);
+    return `<div class="field"><span class="lbl">Starts</span><div class="stepper">
+        <button class="btn" data-m="s-" id="be-s-" aria-label="10 minutes earlier">−10</button><span class="val" id="be-start">${timeLabel(start)}</span><button class="btn" data-m="s+" id="be-s+" aria-label="10 minutes later">+10</button></div></div>
+      <div class="field"><span class="lbl">Length</span><div class="chips" id="be-lens">${lens.map(n => `<button class="chip" data-m="len" data-v="${n}" aria-pressed="${n === len}">${fmtDur(n)}</button>`).join("")}</div>
+        <div class="stepper"><button class="btn" data-m="e-" id="be-e-" aria-label="End 10 minutes earlier">−10</button><span class="val small" id="be-end">ends ${timeLabel(start + len)}</span><button class="btn" data-m="e+" id="be-e+" aria-label="End 10 minutes later">+10</button></div>
+        <p class="hint ${ok ? "" : "err"}" id="be-room">${ok ? (start + room < 1440 ? `The next box starts at ${timeLabel(start + room)}, so this one can be up to ${fmtDur(room)}.` : "")
+          : clash ? `This overlaps “${esc(d.boxes[clash].text)}” (${timeLabel(minOfKey(clash))}). Change the start or length.` : "That’s past midnight."}</p></div>`;
+  };
+  const head = () => `${timeLabel(start)} – ${timeLabel(start + len)}`;
   const ov = openModal(`
-    <header><span class="eyebrow">${slotRange(d, h)}</span><h3>${isNew ? (len === 60 ? "Box this hour" : `Box these ${len} minutes`) : "Edit this box"}</h3></header>
+    <header><span class="eyebrow" id="be-range">${head()}</span><h3>${isNew ? "Box this time" : "Edit this box"}</h3></header>
     <div class="body">
       <div class="field"><label for="be-text">What will you do?</label><input type="text" id="be-text" value="${esc(b.text)}" maxlength="140" placeholder="One focused activity"></div>
+      <div id="be-time">${timeHTML()}</div>
       <div class="field"><span class="lbl">Tag</span><div class="chips" id="be-tags">${tagChips()}</div></div>
       ${b.cal ? `<p class="hint calnote">${ICON.cal}<span>From Google Calendar${b.cal.time ? ` (${esc(b.cal.time)})` : ""}. Syncing the calendar again updates this box.${b.cal.link ? ` <a href="${esc(b.cal.link)}" target="_blank" rel="noopener">Open in Google Calendar</a>` : ""}</span></p>` : ""}
       <label class="flexchk" for="be-flex"><input type="checkbox" class="check" id="be-flex" ${b.flex ? "checked" : ""}> Flexible: if I drop something here, move this to the nearest free time</label>
@@ -31,32 +49,34 @@ function openBoxEditor(h) {
     </div>
     <footer>
       ${isNew ? "" : `<div class="left">
-        <button class="btn ghost" data-m="next" id="be-next" ${!nk || d.boxes[nk] ? "disabled" : ""} title="${nk && d.boxes[nk] ? "The next box is already booked" : ""}">${nk ? `Continue into ${timeLabel(minOfKey(nk))}` : "Continue into next box"}</button>
         <button class="btn ghost" data-m="move" id="be-move">Move…</button>
         <button class="btn ghost" data-m="dup" id="be-dup" title="Tip: on a Mac, hold Option or Shift while dragging a box to copy it">Duplicate…</button>
-        <button class="btn ghost" data-m="unbox" id="be-unbox">${b.rt ? "Remove for today" : "Back to brain dump"}</button>
+        <button class="btn ghost" data-m="unbox" id="be-unbox">${b.rt ? "Remove for today" : "To brain dump"}</button>
+        ${b.rt ? "" : `<button class="btn ghost" data-m="park" id="be-park">To parking lot</button>`}
         <button class="btn ghost" data-m="clear" id="be-clear">Delete</button></div>`}
       <button class="btn" data-m="cancel" id="be-cancel">Cancel</button>
       <button class="btn primary" data-m="save" id="be-save">Save</button>
     </footer>`, (btn) => {
       const m = btn.dataset.m;
       b.text = $("#be-text").value; b.flex = $("#be-flex").checked;
+      const time = () => { $("#be-time").innerHTML = timeHTML(); $("#be-range").textContent = head(); };
+      if (m === "s-" && start - STEP >= 0) { start -= STEP; time(); }
+      if (m === "s+" && start + len + STEP <= 1440) { start += STEP; time(); }
+      if (m === "e-" && len > STEP) { len -= STEP; time(); }
+      if (m === "e+" && start + len + STEP <= 1440) { len += STEP; time(); }
+      if (m === "len") { len = +btn.dataset.v; if (start + len > 1440) len = 1440 - start; time(); }
       if (m === "tag") { b.tag = btn.dataset.v; $("#be-tags").innerHTML = tagChips(); }
       if (m === "st") { b.status = btn.dataset.v; $("#be-st").innerHTML = stChips(); }
       if (m === "cancel") closeModal();
       if (m === "save") {
-        const text = b.text.trim(); if (!text) { $("#be-text").focus(); toast("Type what you’ll do in this hour."); return; }
-        mutateDay(k, dd => { dd.boxes[h] = Object.assign({}, b, { text }); }, { silent: true }); closeModal();
-      }
-      if (m === "next") {
-        const text = b.text.trim(); if (!text) return;
-        if (!nk) return;
-        mutateDay(k, dd => { dd.boxes[h] = Object.assign({}, b, { text }); dd.boxes[nk] = Object.assign({}, b, { text, status: "planned" }); if (dd.end < hourOfKey(nk) + 1) dd.end = hourOfKey(nk) + 1; }, { silent: true });
-        closeModal(); toast(`Continued into ${timeLabel(minOfKey(nk))}.`);
+        const text = b.text.trim(); if (!text) { $("#be-text").focus(); toast("Type what you’ll do in this time."); return; }
+        if (!fits(d, start, len, skip)) { toast("This time overlaps another box. Change the start or length."); return; }
+        mutateDay(k, dd => { if (skip) delete dd.boxes[skip]; putBox(dd, start, Object.assign({}, b, { text, len })); }, { silent: true }); closeModal();
       }
       if (m === "move") { $("#modal-root").innerHTML = ""; S.placing = { from: "box", h, text: d.boxes[h].text }; render(); }
       if (m === "dup") { $("#modal-root").innerHTML = ""; S.placing = { from: "box", h, text: d.boxes[h].text, copy: true }; render(); }
-      if (m === "unbox") { mutateDay(k, dd => { const x = dd.boxes[h]; delete dd.boxes[h]; if (x.pi == null && !x.rt) dd.dump.push({ id: rid(), text: x.text }); }, { silent: true }); closeModal(); }
+      if (m === "unbox") { mutateDay(k, dd => { const x = dd.boxes[h]; delete dd.boxes[h]; if (x.pi == null && !x.rt) dd.dump.push(boxToItem(x, rid())); }, { silent: true }); closeModal(); }
+      if (m === "park") { const x = d.boxes[h]; mutateDay(k, dd => { delete dd.boxes[h]; }, { silent: true }); mutatePark(p => { p.items.push(boxToItem(x, rid(), true)); }, { silent: true }); closeModal(); toast("Moved to the parking lot."); }
       if (m === "clear") { mutateDay(k, dd => { delete dd.boxes[h]; }, { silent: true }); closeModal(); }
     });
   const inp = $("#be-text"); inp.focus(); inp.select();

@@ -11,18 +11,17 @@ const addDays = (k, n) => { const d = parseKey(k); d.setDate(d.getDate() + n); r
 const todayKey = () => keyOf(new Date());
 const hourLabel = h => h === 24 ? "Midnight" : new Date(2000, 0, 1, h).toLocaleTimeString([], { hour: "numeric" });
 const hourShort = h => new Date(2000, 0, 1, h).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-// Slots: an hour is one 60-minute box (key "9"), or split into 30s ("9:00", "9:30") or 15s ("9:00" … "9:45").
-const splitOf = (d, h) => (d.splits && d.splits[h]) || 1;
-const slotKeys = (d, h) => { const n = splitOf(d, h); return n === 1 ? [String(h)] : Array.from({ length: n }, (_, i) => `${h}:${pad(i * 60 / n)}`); };
+// Boxes: each box starts at a minute of the day (key "9:40") and has its own length in minutes (box.len, 10-minute steps).
 const hourOfKey = k => parseInt(k, 10);
 const minOfKey = k => { const [h, m] = String(k).split(":"); return +h * 60 + (+m || 0); };
-const lenOfKey = (d, k) => 60 / splitOf(d, hourOfKey(k));
+const keyAt = m => `${Math.floor(m / 60)}:${pad(m % 60)}`;
+const keyId = k => String(k).replace(":", "-"); // for element ids
+const lenOfKey = (d, k) => (d.boxes[k] && d.boxes[k].len) || 60;
 const timeLabel = min => new Date(2000, 0, 1, Math.floor(min / 60) % 24, min % 60).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 const slotRange = (d, k) => `${timeLabel(minOfKey(k))} – ${timeLabel(minOfKey(k) + lenOfKey(d, k))}`;
 const fmtDur = m => { const h = Math.floor(m / 60), r = m % 60; return h && r ? `${h}h ${r}m` : h ? `${h}h` : `${r}m`; };
 const sortedKeys = d => Object.keys(d.boxes).sort((a, b) => minOfKey(a) - minOfKey(b));
-const hourHasBox = (d, h) => Object.keys(d.boxes).some(k => hourOfKey(k) === h);
-function nextSlot(d, k) { const h = hourOfKey(k), ks = slotKeys(d, h), i = ks.indexOf(String(k)); if (i >= 0 && i < ks.length - 1) return ks[i + 1]; return h >= 23 ? null : slotKeys(d, h + 1)[0]; }
+const hourHasBox = (d, h) => Object.keys(d.boxes).some(k => minOfKey(k) < (h + 1) * 60 && minOfKey(k) + lenOfKey(d, k) > h * 60);
 const TAGS = [["", "None"], ["deep", "Deep work"], ["meet", "Meetings"], ["admin", "Admin"], ["personal", "Personal"]];
 const TAGNAME = Object.fromEntries(TAGS);
 const ICON = {
@@ -35,4 +34,4 @@ const ICON = {
 };
 
 
-export { $, esc, rid, clone, pad, keyOf, parseKey, addDays, todayKey, hourLabel, hourShort, splitOf, slotKeys, hourOfKey, minOfKey, lenOfKey, timeLabel, slotRange, fmtDur, sortedKeys, hourHasBox, nextSlot, TAGS, TAGNAME, ICON };
+export { $, esc, rid, clone, pad, keyOf, parseKey, addDays, todayKey, hourLabel, hourShort, hourOfKey, minOfKey, keyAt, keyId, lenOfKey, timeLabel, slotRange, fmtDur, sortedKeys, hourHasBox, TAGS, TAGNAME, ICON };

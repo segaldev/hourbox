@@ -1,7 +1,8 @@
 import { closeZen, openZen, zenOpen } from "./zen.js";
 import { setQuotesOn } from "./quotes.js";
 import { calSync } from "./calendar.js";
-import { nearestFree, setSplit } from "./day.js";
+import { PX, STEP, fits, snap, snapDown } from "./boxes.js";
+import { moveToDay, moveToList, srcLen, srcText } from "./move.js";
 import { askJournal, closeModal, modalOpen, openBoxEditor, openClearDay, openFinish, openJournal } from "./modals.js";
 import { Notify } from "./notify.js";
 import { render } from "./render.js";
@@ -9,45 +10,9 @@ import { googleSignIn, logout, setAppearance, setStyle, syncThemeColor } from ".
 import { S, applyRoutine, dayId, getDay, getMonth, getPark, getRoutine, mutate, mutateDay, mutatePark } from "./state.js";
 import { CFG_KEY, Store, lsGet, lsSet } from "./store.js";
 import { toast } from "./ui.js";
-import { $, addDays, clone, hourOfKey, keyOf, minOfKey, parseKey, rid, timeLabel, todayKey } from "./util.js";
+import { $, addDays, keyAt, keyId, keyOf, lenOfKey, minOfKey, parseKey, rid, timeLabel, todayKey } from "./util.js";
 
 // ---------- actions ----------
-function srcText(src) {
-  const d = getDay(S.date);
-  if (src.from === "prio") return d.prio[src.i].text;
-  if (src.from === "dump") return (d.dump.find(x => x.id === src.id) || {}).text;
-  if (src.from === "park") return (getPark().items.find(x => x.id === src.id) || {}).text;
-  if (src.from === "box") return (d.boxes[src.h] || {}).text;
-}
-function place(src, h, copy) { // copy: keep the original where it was (Option/Shift-drag, or Duplicate…)
-  const k = S.date; const d0 = getDay(k); copy = !!(copy || src.copy);
-  if (d0.finished) { toast("This day is finished. Reopen it to make changes."); return; }
-  if (src.from === "box" && String(src.h) === String(h)) { S.placing = null; render(); return; }
-  let parkItem = null; let bumped = null; let movedAside = null;
-  if (src.from === "park") { parkItem = getPark().items.find(x => x.id === src.id); if (!parkItem) return; }
-  mutateDay(k, d => {
-    const existing = d.boxes[h];
-    let box;
-    if (src.from === "prio") box = { text: d.prio[src.i].text.trim(), pi: src.i, status: "planned" };
-    else if (src.from === "dump") { const it = d.dump.find(x => x.id === src.id); if (!it) return; box = { text: it.text, status: "planned" }; if (!copy) d.dump = d.dump.filter(x => x.id !== src.id); }
-    else if (src.from === "park") box = { text: parkItem.text, status: "planned" };
-    else if (src.from === "box" && copy) { if (!d.boxes[src.h]) return; box = Object.assign(clone(d.boxes[src.h]), { status: "planned" }); }
-    else if (src.from === "box") { box = d.boxes[src.h]; delete d.boxes[src.h]; if (existing) d.boxes[src.h] = existing; }
-    if (existing && (src.from !== "box" || copy)) {
-      const fk = existing.flex ? nearestFree(d, h) : null;
-      if (fk) { d.boxes[fk] = existing; movedAside = [existing.text, fk]; }
-      else { bumped = existing.text; if (existing.pi == null) d.dump.push({ id: rid(), text: existing.text }); }
-    }
-    d.boxes[h] = box;
-  }, { silent: true });
-  if (parkItem && !copy) mutatePark(p => { p.items = p.items.filter(x => x.id !== src.id); }, { silent: true });
-  S.placing = null; render();
-  const extra = movedAside ? ` “${movedAside[0]}” moved to ${timeLabel(minOfKey(movedAside[1]))}.` : bumped ? ` “${bumped}” went back to the brain dump.` : "";
-  if (copy) toast(`Copied to ${timeLabel(minOfKey(h))}.${extra}`);
-  else if (src.from === "box" && getDay(k).boxes[src.h]) toast("Swapped the two boxes.");
-  else if (movedAside) toast(`“${movedAside[0]}” moved to ${timeLabel(minOfKey(movedAside[1]))}.`);
-  else if (bumped) toast(`“${bumped}” went back to the brain dump.`);
-}
 function cycleStatus(h) {
   const order = ["planned", "done", "partial", "skipped"];
   mutateDay(S.date, d => { const b = d.boxes[h]; b.status = order[(order.indexOf(b.status || "planned") + 1) % order.length]; });
@@ -87,28 +52,26 @@ document.addEventListener("click", e => {
       break; }
     case "cancel-place": S.placing = null; render(); break;
     case "cycle": e.stopPropagation(); if (ro) { toast("This day is finished. Reopen it to make changes."); break; } cycleStatus(t.dataset.h); break;
-    case "split": if (ro) { toast("This day is finished. Reopen it to make changes."); break; } setSplit(+t.dataset.h); break;
+    case "box-new": { // a free cell (a free hour, or the free part of one): the box starts at its start
+      if (ro) break;
+      const start = +t.dataset.start;
+      if (S.placing) { moveToDay(S.placing, start); break; }
+      openBoxEditor(null, start); break; }
     case "box": {
       const h = t.dataset.h;
-      if (S.placing) { place(S.placing, h); break; }
+      if (Date.now() - resizedAt < 400) break; // the click that ends a resize
+      if (S.placing) { toast("That time is taken. Tap a free spot."); break; }
       if (ro) { if (getDay(k).boxes[h]) toast("This day is finished. Reopen it to make changes."); break; }
       openBoxEditor(h); break; }
     case "del-item": {
       if (t.dataset.from === "dump") mutateDay(k, d => { d.dump = d.dump.filter(x => x.id !== t.dataset.id); });
       else mutatePark(p => { p.items = p.items.filter(x => x.id !== t.dataset.id); });
       if (S.placing && S.placing.id === t.dataset.id) S.placing = null; break; }
-    case "to-park": {
-      const it = getDay(k).dump.find(x => x.id === t.dataset.id); if (!it) break;
-      mutateDay(k, d => { d.dump = d.dump.filter(x => x.id !== it.id); }, { silent: true });
-      mutatePark(p => { p.items.push({ id: rid(), text: it.text }); }); toast("Moved to the parking lot."); break; }
-    case "to-dump": {
-      if (getDay(k).finished) { toast("This day is finished. Reopen it to make changes."); break; }
-      const it = getPark().items.find(x => x.id === t.dataset.id); if (!it) break;
-      mutatePark(p => { p.items = p.items.filter(x => x.id !== it.id); }, { silent: true });
-      mutateDay(k, d => { d.dump.push({ id: rid(), text: it.text }); }); toast("Added to this day’s brain dump."); break; }
+    case "to-park": moveToList({ from: "dump", id: t.dataset.id }, "park"); break;
+    case "to-dump": moveToList({ from: "park", id: t.dataset.id }, "dump"); break;
     case "ext": {
-      const d0 = getDay(k); const filled = Object.keys(d0.boxes).map(hourOfKey);
-      const s = Math.min(d0.start, ...filled), en = Math.max(d0.end, ...filled.map(n => n + 1));
+      const d0 = getDay(k), ks = Object.keys(d0.boxes);
+      const s = Math.min(d0.start, ...ks.map(x => Math.floor(minOfKey(x) / 60))), en = Math.max(d0.end, ...ks.map(x => Math.ceil((minOfKey(x) + lenOfKey(d0, x)) / 60)));
       mutateDay(k, d => {
         if (t.dataset.w === "up") d.start = Math.max(0, s - 1);
         if (t.dataset.w === "down") d.end = Math.min(24, en + 1);
@@ -152,7 +115,16 @@ document.addEventListener("click", e => {
 document.addEventListener("click", e => { if (S.dayMenu && !e.target.closest(".daymenu-wrap")) { S.dayMenu = false; render(); } }, true);
 document.addEventListener("keydown", e => {
   if (e.key === "Escape" && S.dayMenu) { S.dayMenu = false; render(); $("#daymenu-btn")?.focus(); return; }
-  if ((e.key === "Enter" || e.key === " ") && e.target.matches(".box[data-act]")) { e.preventDefault(); e.target.click(); }
+  if ((e.key === "Enter" || e.key === " ") && e.target.matches(".box[data-act], .free[data-act]")) { e.preventDefault(); e.target.click(); }
+  if ((e.key === "ArrowUp" || e.key === "ArrowDown") && e.target.matches(".box.filled[data-h]") && !modalOpen()) { // move by 10 minutes; Shift: change length
+    e.preventDefault();
+    const key = e.target.dataset.h, d = getDay(S.date); if (d.finished || !d.boxes[key]) return;
+    const dir = e.key === "ArrowUp" ? -STEP : STEP, s0 = minOfKey(key), len = lenOfKey(d, key);
+    const ns = e.shiftKey ? s0 : s0 + dir, nl = e.shiftKey ? len + dir : len;
+    if (!fits(d, ns, nl, key)) return;
+    mutateDay(S.date, dd => { const b = dd.boxes[key]; delete dd.boxes[key]; dd.boxes[keyAt(ns)] = Object.assign(b, { len: nl }); dd.start = Math.min(dd.start, Math.floor(ns / 60)); dd.end = Math.max(dd.end, Math.ceil((ns + nl) / 60)); });
+    document.getElementById("box-" + keyId(keyAt(ns)))?.focus();
+  }
   if (e.key === "Escape") { // close what's on top, then go back to the day
     if (zenOpen()) closeZen();
     else if (modalOpen()) closeModal();
@@ -190,25 +162,68 @@ document.addEventListener("input", e => {
 });
 $("#datejump").addEventListener("change", e => { if (e.target.value) { S.date = e.target.value; S.placing = null; render(); } });
 
-// drag & drop (desktop)
-let dragSrc = null;
+// drag & drop (desktop): anything can go onto the day, into the brain dump or into the parking lot
+let drag = null; // { src, grab: minutes between the box top and the pointer, len }
+let resizedAt = 0;
+const clearDrop = () => { $("#ghost")?.remove(); document.querySelectorAll(".dropping").forEach(x => x.classList.remove("dropping")); };
 document.addEventListener("dragstart", e => {
+  if (e.target.closest && e.target.closest("[data-rsz]")) { e.preventDefault(); return; }
   const el = e.target.closest("[data-drag]"); if (!el) return;
-  dragSrc = JSON.parse(el.dataset.drag); e.dataTransfer.effectAllowed = "copyMove";
-  try { e.dataTransfer.setData("text/plain", srcText(dragSrc) || ""); } catch (err) {}
+  const src = JSON.parse(el.dataset.drag);
+  const grab = src.from === "box" ? snapDown((e.clientY - el.getBoundingClientRect().top) / PX) : 0;
+  drag = { src, grab, len: srcLen(src).len };
+  e.dataTransfer.effectAllowed = "copyMove";
+  try { e.dataTransfer.setData("text/plain", srcText(src) || ""); } catch (err) {}
 });
-document.addEventListener("dragend", () => { dragSrc = null; document.querySelectorAll(".drop").forEach(x => x.classList.remove("drop", "copying")); });
+document.addEventListener("dragend", () => { drag = null; clearDrop(); });
+const dropStart = (tr, e) => Math.max(0, snap(+tr.dataset.t0 + (e.clientY - tr.getBoundingClientRect().top) / PX - drag.grab));
 document.addEventListener("dragover", e => {
-  const c = e.target.closest("[data-drop]"); if (!c || !dragSrc) return; e.preventDefault();
-  const copy = e.altKey || e.shiftKey; // hold Option or Shift to copy instead of move
+  if (!drag) return;
+  const tr = e.target.closest("#track"), zone = e.target.closest("[data-dropzone]");
+  if (!tr && !zone) { clearDrop(); return; }
+  e.preventDefault();
+  const copy = (e.altKey || e.shiftKey) && drag.src.from === "box"; // hold Option or Shift to copy a box instead of moving it
   e.dataTransfer.dropEffect = copy ? "copy" : "move";
-  document.querySelectorAll(".drop").forEach(x => x !== c.firstElementChild && x.classList.remove("drop", "copying"));
-  c.firstElementChild.classList.add("drop"); c.firstElementChild.classList.toggle("copying", copy);
+  if (zone) { $("#ghost")?.remove(); if (!zone.classList.contains("dropping")) { clearDrop(); zone.classList.add("dropping"); } return; }
+  document.querySelectorAll(".dropping").forEach(x => x.classList.remove("dropping"));
+  const start = dropStart(tr, e), t0 = +tr.dataset.t0;
+  let g = $("#ghost"); if (!g) { g = document.createElement("div"); g.id = "ghost"; g.className = "dropghost"; tr.appendChild(g); }
+  g.style.top = ((start - t0) * PX) + "px"; g.style.height = (drag.len * PX - 2) + "px";
+  g.textContent = `${copy ? "Copy to " : ""}${timeLabel(start)} – ${timeLabel(start + drag.len)}`;
 });
 document.addEventListener("drop", e => {
-  const c = e.target.closest("[data-drop]"); if (!c || !dragSrc) return; e.preventDefault();
-  const src = dragSrc; dragSrc = null; place(src, c.dataset.drop, e.altKey || e.shiftKey || e.dataTransfer.dropEffect === "copy");
+  if (!drag) return;
+  const tr = e.target.closest("#track"), zone = e.target.closest("[data-dropzone]");
+  if (!tr && !zone) return;
+  e.preventDefault();
+  const { src } = drag, copy = e.altKey || e.shiftKey || e.dataTransfer.dropEffect === "copy";
+  const start = tr ? dropStart(tr, e) : 0;
+  drag = null; clearDrop();
+  const to = zone && zone.dataset.dropzone;
+  setTimeout(() => { if (tr) moveToDay(src, start, copy); else moveToList(src, to); }, 0); // after the browser has finished the drag
+});
+
+// resize: drag a box's bottom edge, in 10-minute steps, up to the next box
+document.addEventListener("pointerdown", e => {
+  const h = e.target.closest("[data-rsz]"); if (!h) return;
+  e.preventDefault(); e.stopPropagation();
+  const key = h.dataset.rsz, el = h.closest(".box"), d = getDay(S.date); if (!d.boxes[key] || d.finished) return;
+  const s0 = minOfKey(key), len0 = lenOfKey(d, key), y0 = e.clientY;
+  let max = len0; while (fits(d, s0, max + STEP, key)) max += STEP;
+  let len = len0;
+  const tip = document.createElement("div"); tip.className = "rsz-tip"; el.appendChild(tip); el.classList.add("resizing");
+  const show = () => { el.style.height = (len * PX - 2) + "px"; tip.textContent = `${timeLabel(s0)} – ${timeLabel(s0 + len)} · ${len < 60 ? len + " min" : (len % 60 ? `${Math.floor(len / 60)}h ${len % 60}m` : len / 60 + "h")}`; };
+  show();
+  try { h.setPointerCapture(e.pointerId); } catch (err) {}
+  const move = ev => { len = Math.max(STEP, Math.min(max, snap(len0 + (ev.clientY - y0) / PX))); show(); };
+  const up = () => {
+    h.removeEventListener("pointermove", move); h.removeEventListener("pointerup", up); h.removeEventListener("pointercancel", up);
+    resizedAt = Date.now();
+    if (len !== len0) mutateDay(S.date, dd => { if (dd.boxes[key]) { dd.boxes[key].len = len; dd.end = Math.max(dd.end, Math.ceil((s0 + len) / 60)); } });
+    else { tip.remove(); el.classList.remove("resizing"); }
+  };
+  h.addEventListener("pointermove", move); h.addEventListener("pointerup", up); h.addEventListener("pointercancel", up);
 });
 
 
-export { srcText, place, cycleStatus, fitGoal, dragSrc };
+export { cycleStatus, fitGoal };

@@ -1,8 +1,9 @@
 import { closeModal, openModal } from "./modals.js";
-import { S, getDay, mutate, mutateDay, resplit, slotsFor } from "./state.js";
+import { fits, nearestStart, putBox } from "./boxes.js";
+import { S, getDay, mutate, mutateDay } from "./state.js";
 import { FB, USE_EMULATOR } from "./store.js";
 import { toast } from "./ui.js";
-import { $, clone, esc, lenOfKey, minOfKey, parseKey, rid, sortedKeys, splitOf, timeLabel } from "./util.js";
+import { $, clone, esc, lenOfKey, minOfKey, parseKey, rid, sortedKeys, timeLabel } from "./util.js";
 
 // ---------- Google Calendar import (read-only for now) ----------
 // Each imported box keeps its event id in box.cal, so a later version can write changes back.
@@ -71,14 +72,9 @@ const Cal = {
 };
 // Put box b back as close to `start` as possible, keeping its length (later first, within 6 hours).
 function placeNear(dd, b, start, len) {
-  for (let off = 0; off <= 360; off += 15) for (const c of off ? [start + off, start - off] : [start]) {
-    const fit = slotsFor(dd, c, len); if (!fit) continue;
-    for (let h = fit.h0; h <= fit.h1; h++) if (splitOf(dd, h) < fit.need) resplit(dd, h, fit.need);
-    fit.keys.forEach(key => { dd.boxes[key] = clone(b); });
-    dd.start = Math.min(dd.start, fit.h0); dd.end = Math.max(dd.end, fit.h1 + 1);
-    return c;
-  }
-  return null;
+  const c = nearestStart(dd, start, len); if (c == null) return null;
+  putBox(dd, c, Object.assign(clone(b), { len }));
+  return c;
 }
 // Work out what syncing would do to day k, without changing anything yet.
 function planCalendar(d, k, events) {
@@ -94,27 +90,24 @@ function planCalendar(d, k, events) {
     if (em <= sm) continue;
     const evId = ev._cal && ev._cal !== "primary" ? ev._cal + "|" + ev.id : ev.id; // ids are only unique within one calendar
     seen.add(evId);
-    const start = Math.floor(sm / 15) * 15, end = Math.min(1440, Math.max(start + 15, Math.ceil(em / 15) * 15));
+    const start = Math.floor(sm / 10) * 10, end = Math.min(1440, Math.max(start + 10, Math.ceil(em / 10) * 10)); // boxes snap to 10 minutes
     const real = `${timeLabel(sm)} – ${timeLabel(em)}`, range = `${timeLabel(start)} – ${timeLabel(end)}`;
     // anything already planned in that time?
     const blockers = Object.keys(dd.boxes).filter(key => { const s0 = minOfKey(key), e0 = s0 + lenOfKey(dd, key); return s0 < end && e0 > start; });
     const fixed = blockers.filter(key => !dd.boxes[key].flex);
     if (fixed.length) { rows.push({ title, kind: "overlap", range, with: dd.boxes[fixed[0]].text }); continue; }
     const moved = blockers.map(key => { const b = dd.boxes[key], len = lenOfKey(dd, key); delete dd.boxes[key]; return { key, b, len }; });
-    const fit = slotsFor(dd, start, end - start);
-    if (!fit) { moved.forEach(({ key, b }) => { dd.boxes[key] = b; }); rows.push({ title, kind: "overlap", range, with: "the boxes in that hour" }); continue; }
-    for (let h = fit.h0; h <= fit.h1; h++) if (splitOf(dd, h) < fit.need) resplit(dd, h, fit.need);
+    if (!fits(dd, start, end - start)) { moved.forEach(({ key, b }) => { dd.boxes[key] = b; }); rows.push({ title, kind: "overlap", range, with: "the boxes in that hour" }); continue; }
     const old = prev[evId] && prev[evId][0].b;
     const fromHourbox = !!(ev.extendedProperties && ev.extendedProperties.private && ev.extendedProperties.private.hourbox);
     const canEdit = fromHourbox || !ev.organizer || !!ev.organizer.self || ev.guestsCanModify === true;
     const guests = (ev.attendees || []).filter(a => !a.self && !a.resource).length;
-    fit.keys.forEach(key => { dd.boxes[key] = Object.assign({ text: title, tag: old ? old.tag || "" : "meet", status: old ? old.status || "planned" : "planned" },
+    const key = putBox(dd, start, Object.assign({ text: title, len: end - start, tag: old ? old.tag || "" : "meet", status: old ? old.status || "planned" : "planned" },
       old && old.flex ? { flex: true } : {}, old && old.pi != null ? { pi: old.pi } : {}, old && old.rt ? { rt: old.rt } : {},
       { cal: { id: evId, calendar: ev._cal || "primary", calName: ev._calName || "", etag: ev.etag || "", updated: ev.updated || "", link: ev.htmlLink || "", time: start === sm && end === em ? "" : real,
-        src: fromHourbox ? "hourbox" : "google", canEdit, guests, base: { start, end, summary: title, realStart: sm, realEnd: em } } }); });
-    dd.start = Math.min(dd.start, fit.h0); dd.end = Math.max(dd.end, fit.h1 + 1);
+        src: fromHourbox ? "hourbox" : "google", canEdit, guests, base: { start, end, summary: title, realStart: sm, realEnd: em } } }));
     moved.forEach(({ key, b, len }) => { if (placeNear(dd, b, minOfKey(key), len) == null) dd.dump.push({ id: rid(), text: b.text }); });
-    const changed = old && (old.text !== title || prev[evId].map(x => x.key).sort().join() !== fit.keys.slice().sort().join());
+    const changed = old && (old.text !== title || prev[evId].length !== 1 || prev[evId][0].key !== key || (old.len || 60) !== end - start);
     rows.push({ title, kind: !old ? "new" : changed ? "updated" : "same", range: real, movedAside: moved.map(m => m.b.text), calName: ev._calName || "" });
   }
   for (const [id, list] of Object.entries(prev)) if (!seen.has(id)) rows.push({ title: list[0].b.text, kind: "removed" });

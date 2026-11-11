@@ -1,8 +1,16 @@
 # Hourbox
 
-A simple time-boxing planner: top 3 priorities, brain dump, parking lot, a daily hour grid (one activity per box; any hour can be split into 30- or 15-minute boxes), a month view, and a "Finish day" review with optional reflection.
+A simple time-boxing planner: top 3 priorities, brain dump, parking lot, a daily timeline (one activity per box, any length in 10-minute steps; boxes never overlap), a month view, and a "Finish day" review with optional reflection.
 
 **Live app:** https://segaldev.github.io/hourbox/
+
+## Boxes and moving things around
+
+- Tap a free hour to box it (1 hour by default). In the box editor, set the start and length in 10-minute steps.
+- Drag a box's bottom edge to make it longer or shorter. On a Mac, select a box and use ↑/↓ to move it by 10 minutes, Shift+↑/↓ to change its length.
+- Drag anything between the day, the brain dump and the parking lot. Boxes move as they are: a 20-minute box taken off the day and put back later is still 20 minutes. Hold Option or Shift while dragging a box to copy it.
+- Dropping onto a taken time: flexible boxes step aside; otherwise the box goes to the nearest free time. New items shrink to fit a smaller gap.
+- On a phone: tap the clock on an item, then tap a free time.
 
 ## Daily routine
 

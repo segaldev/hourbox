@@ -1,6 +1,7 @@
 import { render } from "./render.js";
 import { Store } from "./store.js";
-import { clone, hourHasBox, hourOfKey, minOfKey, parseKey, slotKeys, splitOf, timeLabel, todayKey } from "./util.js";
+import { fits, migrateBoxes, nearestStart, putBox } from "./boxes.js";
+import { clone, parseKey, timeLabel, todayKey } from "./util.js";
 
 // ---------- state ----------
 const S = { view: "day", date: todayKey(), docs: {}, ready: false, mode: "connecting", placing: null };
@@ -17,7 +18,7 @@ function normDay(d, key) {
   while (o.prio.length < 3) o.prio.push({ text: "", done: false });
   o.boxes = o.boxes || {}; o.dump = o.dump || [];
   o.start = Math.min(o.start, DEF_START);
-  return o;
+  return migrateBoxes(o);
 }
 const dayId = k => "day-" + k;
 // Daily routine: a template of boxes that every new day (today or later) starts with.
@@ -30,41 +31,14 @@ const DEFAULT_ROUTINE = [
 const getRoutine = () => Object.assign({ kind: "routine", items: clone(DEFAULT_ROUTINE) }, S.docs.routine || {});
 const dowOf = k => (parseKey(k).getDay() + 6) % 7;
 const routineFor = k => getRoutine().items.filter(it => it.text.trim() && (!it.days || it.days.includes(dowOf(k)))).sort((a, b) => a.start - b.start);
-function resplit(d, h, n) { // change an hour's box length, keeping boxes where they start; returns boxes that no longer fit
-  const bumped = [];
-  const old = Object.keys(d.boxes).filter(key => hourOfKey(key) === h).sort((a, b) => minOfKey(a) - minOfKey(b)).map(key => [key, d.boxes[key]]);
-  old.forEach(([key]) => delete d.boxes[key]);
-  d.splits = d.splits || {}; if (n === 1) delete d.splits[h]; else d.splits[h] = n;
-  const ks = slotKeys(d, h);
-  old.forEach(([key, b]) => {
-    let i = Math.floor((minOfKey(key) - h * 60) / (60 / n));
-    while (i < ks.length && d.boxes[ks[i]]) i++;
-    if (i < ks.length) d.boxes[ks[i]] = b; else bumped.push(b);
-  });
-  return bumped;
-}
-function slotsFor(d, start, len) { // keys covering [start, start+len) once hours are split finely enough, or null if any is taken
-  const need = start % 60 === 0 && len % 60 === 0 ? 1 : start % 30 === 0 && len % 30 === 0 ? 2 : 4;
-  const h0 = Math.floor(start / 60), h1 = Math.floor((start + len - 1) / 60);
-  if (start < 0 || h1 > 23) return null;
-  // only split hours that are still empty, so nothing you planned ever gets shorter
-  for (let h = h0; h <= h1; h++) if (splitOf(d, h) < need && hourHasBox(d, h)) return null;
-  const trial = clone(d); for (let h = h0; h <= h1; h++) if (splitOf(trial, h) < need) resplit(trial, h, need);
-  const keys = []; for (let h = h0; h <= h1; h++) slotKeys(trial, h).forEach(key => { const m = minOfKey(key); if (m >= start && m < start + len) keys.push(key); });
-  return keys.every(key => !trial.boxes[key]) ? { keys, need, h0, h1 } : null;
-}
-function applyRoutine(d, k) { // fills empty slots with routine items not already on the day; returns {added, moved, skipped}
+function applyRoutine(d, k) { // adds routine items not already on the day where they fit; returns {added, skipped}
   const added = [], moved = [], skipped = [];
   for (const it of routineFor(k)) {
     if (Object.values(d.boxes).some(b => b.rt === it.id)) continue;
-    let start = it.start, fit = slotsFor(d, start, it.len);
-    if (!fit && it.flex) { // flexible: nearest free time, later first, within 6 hours
-      for (let off = 15; off <= 360 && !fit; off += 15) for (const c of [it.start + off, it.start - off]) { if (!fit && (fit = slotsFor(d, c, it.len))) start = c; }
-    }
-    if (!fit) { skipped.push(it.text); continue; }
-    for (let h = fit.h0; h <= fit.h1; h++) if (splitOf(d, h) < fit.need) resplit(d, h, fit.need);
-    fit.keys.forEach(key => { d.boxes[key] = { text: it.text.trim(), tag: it.tag || "", status: "planned", rt: it.id, flex: !!it.flex }; });
-    d.start = Math.min(d.start, fit.h0); d.end = Math.max(d.end, fit.h1 + 1);
+    // flexible items take the nearest free time (within 6 hours) when their usual time is taken
+    const start = fits(d, it.start, it.len) ? it.start : it.flex ? nearestStart(d, it.start, it.len) : null;
+    if (start == null) { skipped.push(it.text); continue; }
+    putBox(d, start, { text: it.text.trim(), tag: it.tag || "", status: "planned", rt: it.id, flex: !!it.flex, len: it.len });
     (start === it.start ? added : moved).push(start === it.start ? it.text : `${it.text} (at ${timeLabel(start)})`);
   }
   d.rtApplied = true;
@@ -88,4 +62,4 @@ const mutateDay = (k, fn, opts) => mutate(dayId(k), getDay(k), fn, opts);
 const mutatePark = (fn, opts) => mutate("parking", getPark(), fn, opts);
 
 
-export { S, DEF_START, DEF_END, blankDay, normDay, dayId, DEFAULT_ROUTINE, getRoutine, dowOf, routineFor, resplit, slotsFor, applyRoutine, getDay, hasDay, getPark, getMonth, mutate, mutateDay, mutatePark };
+export { S, DEF_START, DEF_END, blankDay, normDay, dayId, DEFAULT_ROUTINE, getRoutine, dowOf, routineFor, applyRoutine, getDay, hasDay, getPark, getMonth, mutate, mutateDay, mutatePark };

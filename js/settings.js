@@ -7,7 +7,7 @@ import { $, ICON, TAGS, esc, fmtDur, parseKey, timeLabel } from "./util.js";
 /* global STYLE_FONTS, loadStyleFonts */
 
 
-const LENS = [15, 30, 45, 60, 90, 120, 180];
+const LENS = [10, 15, 20, 30, 40, 45, 50, 60, 90, 120, 180];
 const DAYN = ["M", "T", "W", "T", "F", "S", "S"], DAYFULL = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 function routineWarnings(items) {
   const w = [];
@@ -20,8 +20,8 @@ function routineWarnings(items) {
 }
 function renderRoutine() {
   const items = getRoutine().items.slice().sort((a, b) => a.start - b.start);
-  const timeOpts = v => Array.from({ length: 96 }, (_, i) => i * 15).map(m => `<option value="${m}" ${m === v ? "selected" : ""}>${timeLabel(m)}</option>`).join("");
-  const lenOpts = v => LENS.map(m => `<option value="${m}" ${m === v ? "selected" : ""}>${fmtDur(m)}</option>`).join("");
+  const timeOpts = v => [...new Set(Array.from({ length: 144 }, (_, i) => i * 10).concat(v))].sort((x, y) => x - y).map(m => `<option value="${m}" ${m === v ? "selected" : ""}>${timeLabel(m)}</option>`).join("");
+  const lenOpts = v => [...new Set(LENS.concat(v))].sort((x, y) => x - y).map(m => `<option value="${m}" ${m === v ? "selected" : ""}>${fmtDur(m)}</option>`).join("");
   const tagOpts = v => TAGS.map(([t, n]) => `<option value="${t}" ${t === (v || "") ? "selected" : ""}>${t ? n : "No tag"}</option>`).join("");
   const rows = items.map(it => `<div class="rt-row">
       <select id="rt-${it.id}-start" data-rt="start" data-id="${it.id}" aria-label="Start time">${timeOpts(it.start)}</select>
@@ -57,7 +57,7 @@ function renderAuth() {
   return `<section class="welcome">
     <div class="welcome-brand"><span class="brand-mark big" aria-hidden="true"></span><h1>Hourbox</h1></div>
     <p class="welcome-lead">Plan your day in boxes of time.</p>
-    <p class="welcome-text">Time boxing gives every task a start, an end and a place in your day. Pick your top 3 priorities, empty your head into a brain dump, then box the work into hours, half hours or quarter hours. Boxes never overlap, so your plan fits the time you really have.</p>
+    <p class="welcome-text">Time boxing gives every task a start, an end and a place in your day. Pick your top 3 priorities, empty your head into a brain dump, then box the work into blocks of any length, down to 10 minutes. Boxes never overlap, so your plan fits the time you really have.</p>
     <div class="welcome-demo" aria-hidden="true">
       <div class="done"><span>9:00</span><i>Deep work: draft the proposal</i></div>
       <div class="half"><span>10:00</span><i>Inbox and messages</i></div>

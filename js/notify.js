@@ -1,7 +1,7 @@
 import { render } from "./render.js";
 import { S, getDay, mutateDay } from "./state.js";
 import { toast } from "./ui.js";
-import { lenOfKey, minOfKey, slotRange, sortedKeys, timeLabel, todayKey } from "./util.js";
+import { keyAt, lenOfKey, minOfKey, slotRange, sortedKeys, timeLabel, todayKey } from "./util.js";
 
 // ---------- box notifications ----------
 // While Hourbox is open, tell me when a box ends and the next one starts. Per device.
@@ -67,9 +67,10 @@ document.addEventListener("visibilitychange", () => Notify.tick());
 if (Notify.on) Notify.ensureWorker();
 if ("serviceWorker" in navigator) navigator.serviceWorker.addEventListener("message", ev => {
   const m = ev.data || {}; if (m.type !== "hourbox-mark-done") return;
-  const d = getDay(m.date); if (!d.boxes[m.key]) return;
-  mutateDay(m.date, dd => { if (dd.boxes[m.key]) dd.boxes[m.key].status = "done"; });
-  toast(`Marked “${d.boxes[m.key].text}” done.`);
+  const key = keyAt(minOfKey(m.key)); // older notifications used keys like "9"
+  const d = getDay(m.date); if (!d.boxes[key]) return;
+  mutateDay(m.date, dd => { if (dd.boxes[key]) dd.boxes[key].status = "done"; });
+  toast(`Marked “${d.boxes[key].text}” done.`);
 });
 
 export { NOTIFY_KEY, Notify };

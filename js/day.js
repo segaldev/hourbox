@@ -1,7 +1,7 @@
 import { renderQuote } from "./quotes.js";
-import { DEF_END, DEF_START, S, getDay, getPark, mutateDay, resplit, routineFor } from "./state.js";
-import { toast } from "./ui.js";
-import { $, ICON, TAGNAME, esc, fmtDur, hourHasBox, hourLabel, hourOfKey, lenOfKey, minOfKey, parseKey, rid, slotKeys, splitOf, timeLabel, todayKey } from "./util.js";
+import { PX, itemLen } from "./boxes.js";
+import { DEF_END, DEF_START, S, getDay, getPark, routineFor } from "./state.js";
+import { $, ICON, TAGNAME, esc, fmtDur, hourHasBox, hourLabel, keyAt, keyId, lenOfKey, minOfKey, parseKey, sortedKeys, timeLabel, todayKey } from "./util.js";
 
 function summarize(d) {
   const ks = Object.keys(d.boxes), bs = ks.map(k => d.boxes[k]);
@@ -28,12 +28,12 @@ function renderDay() {
   // Brain dump
   const dump = d.dump.map(it => itemRow(it, "dump", ro)).join("") || `<li class="empty-note">Empty your head here. Each line becomes a card you can drop into an hour.</li>`;
   const park = getPark().items.map(it => itemRow(it, "park", false)).join("") || `<li class="empty-note">Ideas and tasks that aren’t for today. These stay here across days.</li>`;
-  // Grid
-  const filledH = Object.keys(d.boxes).map(hourOfKey);
-  const start = Math.min(d.start, ...filledH), end = Math.max(d.end, ...filledH.map(n => n + 1));
+  // Grid: hours from d.start to d.end, stretched to fit every box
+  const keys = sortedKeys(d);
+  const start = Math.min(d.start, ...keys.map(x => Math.floor(minOfKey(x) / 60)));
+  const end = Math.max(d.end, ...keys.map(x => Math.ceil((minOfKey(x) + lenOfKey(d, x)) / 60)));
   const nd = new Date(), nowMin = k === todayKey() ? nd.getHours() * 60 + nd.getMinutes() : null;
-  let hours = "";
-  for (let h = start; h < end; h++) hours += hourRow(d, h, ro, nowMin);
+  const hours = timeline(d, keys, start, end, ro, nowMin);
   const sm = summarize(d);
   const topExt = !ro ? `<div class="extend">${start > 0 ? `<button class="btn" id="ext-up" data-act="ext" data-w="up">+ Earlier hour</button>` : ""}${start < DEF_START && !hourHasBox(d, start) ? `<button class="btn ghost" id="ext-up-hide" data-act="ext" data-w="up-hide">Hide ${hourLabel(start)}</button>` : ""}</div>` : "";
   const botExt = !ro ? `<div class="extend">${end < 24 ? `<button class="btn" id="ext-down" data-act="ext" data-w="down">+ Later hour</button>` : ""}${end > DEF_END && !hourHasBox(d, end - 1) ? `<button class="btn ghost" id="ext-down-hide" data-act="ext" data-w="down-hide">Hide ${hourLabel(end - 1)}</button>` : ""}</div>` : "";
@@ -59,10 +59,10 @@ function renderDay() {
   const quote = renderQuote(k);
   return `<div class="day${quote ? " has-quote" : ""}">${quote}
     <section class="pane a-prio"><div class="pane-head"><h2>Top 3 priorities</h2><span class="hint">Box them first</span></div><ol class="prio-list">${prio}</ol></section>
-    <section class="pane a-dump"><div class="pane-head"><h2>Brain dump${countBadge(d.dump)}</h2><span class="hint">This day only</span></div>
+    <section class="pane a-dump" data-dropzone="dump"><div class="pane-head"><h2>Brain dump${countBadge(d.dump)}</h2><span class="hint">This day only</span></div>
       ${ro ? "" : `<form class="add" data-form="dump"><input type="text" id="add-dump" placeholder="Add a thought or task, then Enter" maxlength="200" autocomplete="off"><button class="btn" type="submit">Add</button></form>`}
       <ul class="items">${dump}</ul></section>
-    <section class="pane a-park"><div class="pane-head"><h2>Parking lot${countBadge(getPark().items)}</h2><span class="hint">Kept across days</span></div>
+    <section class="pane a-park" data-dropzone="park"><div class="pane-head"><h2>Parking lot${countBadge(getPark().items)}</h2><span class="hint">Kept across days</span></div>
       <form class="add" data-form="park"><input type="text" id="add-park" placeholder="Not today, but don’t lose it" maxlength="200" autocomplete="off"><button class="btn" type="submit">Add</button></form>
       <ul class="items">${park}</ul></section>
     <section class="a-grid ${ro ? "readonly" : ""}">
@@ -79,7 +79,7 @@ function renderDay() {
             <button role="menuitem" class="mi danger" id="mi-clear" data-act="clear-day">Clear day<span>Delete everything on this day</span></button>
           </div>` : ""}
         </div></div>
-      ${summary}${topExt}<div class="hours" id="hours">${hours}</div>${botExt}
+      ${summary}${topExt}${hours}${botExt}
     </section></div>`;
 }
 const countBadge = items => { const n = items.filter(it => !it.done).length; return n ? ` <span class="count" title="${n} to do">${n}</span>` : ""; };
@@ -89,65 +89,60 @@ function itemRow(it, from, ro) {
     : `<button class="mini" data-act="to-dump" data-id="${it.id}" title="Move to this day’s brain dump" aria-label="Move to brain dump">${ICON.today}</button>`;
   return `<li class="item ${picked ? "picked" : ""} ${it.done ? "done" : ""}" ${ro ? "" : `draggable="true" data-drag='${esc(JSON.stringify({ from, id: it.id }))}'`}>
     <input type="checkbox" class="check" data-act="item-done" data-from="${from}" data-id="${it.id}" ${it.done ? "checked" : ""} ${ro ? "disabled" : ""} aria-label="Done: ${esc(it.text)}">
-    <span class="txt">${esc(it.text)}</span>
+    <span class="txt">${esc(it.text)}</span>${itemLen(it) ? `<span class="ilen" title="Keeps its length when you put it back on a day">${fmtDur(itemLen(it))}</span>` : ""}
     ${ro ? "" : `<button class="mini" data-act="pick" data-from="${from}" data-id="${it.id}" title="Schedule into an hour" aria-label="Schedule">${ICON.clock}</button>${other}
     <button class="mini" data-act="del-item" data-from="${from}" data-id="${it.id}" title="Delete" aria-label="Delete">${ICON.x}</button>`}</li>`;
 }
-function hourRow(d, h, ro, nowMin) {
-  const ks = slotKeys(d, h), n = ks.length;
-  const isNowHour = nowMin != null && Math.floor(nowMin / 60) === h;
-  const lbl = n === 1 ? "1h" : n === 2 ? "30m" : "15m", nxt = n === 1 ? "30-minute" : n === 2 ? "15-minute" : "one 1-hour";
-  return `<div class="hour split-${n} ${isNowHour ? "now" : ""}" data-h="${h}">
-    <div class="hlabel"><span>${hourLabel(h)}</span>${ro ? "" : `<button class="splitbtn ${n > 1 ? "on" : ""}" id="split-${h}" data-act="split" data-h="${h}" title="Box length. Click to split into ${nxt} boxes." aria-label="Box length ${lbl}. Change">${lbl}</button>`}</div>
-    <div class="cells">${ks.map(key => slotBox(d, key, ro, n, nowMin)).join("")}</div></div>`;
-}
-function slotBox(d, key, ro, n, nowMin) {
-  const b = d.boxes[key], id = key.replace(":", "-"), m0 = minOfKey(key);
-  const sub = n > 1 ? `<span class="smin">${timeLabel(m0).replace(/\s?[AP]M$/i, "")}</span>` : "";
-  const now = nowMin != null && nowMin >= m0 && nowMin < m0 + 60 / n ? " nowslot" : "";
-  let inner;
-  if (b) {
-    const st = b.status || "planned";
-    inner = `<div class="box filled st-${st}${now}${b.flex ? " flex" : ""}" role="button" tabindex="0" id="box-${id}" data-act="box" data-h="${key}" ${ro ? "" : `draggable="true" data-drag='${esc(JSON.stringify({ from: "box", h: key }))}'`}>
-      ${sub}<button class="stbtn ${st}" id="st-${id}" data-act="cycle" data-h="${key}" title="Status: ${st}. Click to change." aria-label="Status ${st}">${st === "done" ? ICON.check : st === "skipped" ? ICON.x : ""}</button>
-      <span class="btxt">${esc(b.text)}</span>
-      ${b.pi != null ? `<span class="prio-flag" title="Top priority">P${b.pi + 1}</span>` : ""}
-      ${b.cal ? `<span class="calmark" title="From Google Calendar${b.cal.time ? `: ${esc(b.cal.time)}` : ""}">${ICON.cal}${b.cal.time ? `<span>${esc(b.cal.time)}</span>` : ""}</span>` : ""}
-      ${b.flex ? `<span class="flexmark" title="Flexible: drop something here and this moves to the nearest free time">flexible</span>` : ""}
-      ${b.tag ? `<span class="tag tg-${b.tag}">${esc(TAGNAME[b.tag] || b.tag)}</span>` : ""}
-    </div>`;
-  } else {
-    inner = `<div class="box empty${now}" role="button" tabindex="0" id="box-${id}" data-act="box" data-h="${key}">${sub}<span class="plus">${ro ? "" : n === 1 ? "+ Box this hour" : "+"}</span></div>`;
+// The day as a timeline: free time is drawn as tappable cells (split at each hour), boxes sit on top at their real times.
+function timeline(d, keys, startH, endH, ro, nowMin) {
+  const t0 = startH * 60, t1 = endH * 60, y = m => ((m - t0) * PX).toFixed(1);
+  let labels = "", cells = "", boxes = "";
+  for (let h = startH; h < endH; h++) labels += `<div class="hl${nowMin != null && Math.floor(nowMin / 60) === h ? " now" : ""}" style="top:${y(h * 60)}px">${hourLabel(h)}</div>`;
+  const free = (a, b) => { for (let s0 = a; s0 < b;) { const e0 = Math.min(b, (Math.floor(s0 / 60) + 1) * 60); if (!ro) cells += freeCell(s0, e0, y); s0 = e0; } };
+  let cur = t0;
+  for (const key of keys) {
+    const s0 = minOfKey(key), len = lenOfKey(d, key);
+    if (s0 > cur) free(cur, s0);
+    cur = Math.max(cur, s0 + len);
+    boxes += boxEl(d, key, s0, len, ro, nowMin, y);
   }
-  return `<div class="cell" data-drop="${key}">${inner}</div>`;
+  if (cur < t1) free(cur, t1);
+  return `<div class="hours" id="hours"><div class="hlabels" aria-hidden="true">${labels}</div>
+    <div class="track" id="track" data-t0="${t0}" style="height:${((t1 - t0) * PX).toFixed(1)}px">${cells}${boxes}</div></div>`;
 }
-function setSplit(h) {
-  const k = S.date, d0 = getDay(k), cur = splitOf(d0, h), n = cur === 1 ? 2 : cur === 2 ? 4 : 1;
-  let bumped = [];
-  mutateDay(k, d => {
-    bumped = resplit(d, h, n).map(b => b.text);
-    bumped.forEach(text => { if (!d.dump.some(x => x.text === text)) d.dump.push({ id: rid(), text }); });
-  });
-  if (bumped.length) toast(`Only one box fits now. “${bumped[0]}”${bumped.length > 1 ? ` and ${bumped.length - 1} more` : ""} went back to the brain dump.`);
+function freeCell(s0, e0, y) {
+  const n = e0 - s0, full = n === 60 && s0 % 60 === 0;
+  const label = full ? "+ Box this hour" : n >= 20 ? `${n} min free` : "+";
+  return `<div class="free${full ? "" : " part"}${n < 20 ? " small" : ""}" role="button" tabindex="0" id="box-${keyId(keyAt(s0))}" data-act="box-new" data-start="${s0}" data-end="${e0}"
+    style="top:${y(s0)}px;height:${((e0 - s0) * PX).toFixed(1)}px" aria-label="${timeLabel(s0)} to ${timeLabel(e0)}: free. Box this time">${label}</div>`;
 }
-function nearestFree(d, key) { // closest empty slot to `key` (ties go later), within the visible hours
-  const filledH = Object.keys(d.boxes).map(hourOfKey);
-  const s0 = Math.min(d.start, ...filledH), e0 = Math.max(d.end, ...filledH.map(n => n + 1)), t = minOfKey(key);
-  let best = null, bd = Infinity;
-  for (let h = s0; h < e0; h++) for (const k2 of slotKeys(d, h)) {
-    if (k2 === String(key) || d.boxes[k2]) continue;
-    const m = minOfKey(k2), dist = m >= t ? m - t : t - m + 0.5;
-    if (dist < bd) { bd = dist; best = k2; }
-  }
-  return best;
+function boxEl(d, key, s0, len, ro, nowMin, y) {
+  const b = d.boxes[key], id = keyId(key), st = b.status || "planned";
+  const now = nowMin != null && nowMin >= s0 && nowMin < s0 + len ? " nowslot" : "";
+  const size = len <= 10 ? " tiny" : len <= 25 ? " slim" : "";
+  const tall = len >= 40 ? " tall" : "";
+  const range = `${timeLabel(s0)} – ${timeLabel(s0 + len)}`;
+  return `<div class="box filled st-${st}${now}${b.flex ? " flex" : ""}${size}${tall}" role="button" tabindex="0" id="box-${id}" data-act="box" data-h="${key}"
+    style="top:${(+y(s0) + 1).toFixed(1)}px;height:${(len * PX - 2).toFixed(1)}px" aria-label="${esc(b.text)}, ${range}"
+    ${ro ? "" : `draggable="true" data-drag='${esc(JSON.stringify({ from: "box", h: key }))}'`}>
+    ${size === " tiny" ? "" : `<button class="stbtn ${st}" id="st-${id}" data-act="cycle" data-h="${key}" title="Status: ${st}. Click to change." aria-label="Status ${st}">${st === "done" ? ICON.check : st === "skipped" ? ICON.x : ""}</button>`}
+    <span class="btxt">${esc(b.text)}</span>
+    ${b.pi != null ? `<span class="prio-flag" title="Top priority">P${b.pi + 1}</span>` : ""}
+    ${b.cal ? `<span class="calmark" title="From Google Calendar${b.cal.time ? `: ${esc(b.cal.time)}` : ""}">${ICON.cal}</span>` : ""}
+    ${b.flex && !size ? `<span class="flexmark" title="Flexible: if something is dropped here, this moves to the nearest free time">flexible</span>` : ""}
+    ${b.tag && !size ? `<span class="tag tg-${b.tag}">${esc(TAGNAME[b.tag] || b.tag)}</span>` : ""}
+    <span class="btime">${size ? `${timeLabel(s0)} · ${fmtDur(len)}` : range}</span>
+    ${ro ? "" : `<span class="rsz" data-rsz="${key}" draggable="false" title="Drag to change the length"></span>`}
+  </div>`;
 }
 function placeNowLine() {
   if (S.view !== "day" || S.date !== todayKey()) return;
-  const n = new Date(); const row = document.querySelector(`.hour[data-h="${n.getHours()}"]`); if (!row) return;
-  const line = document.createElement("div"); line.className = "nowline";
-  line.style.top = (row.offsetTop + row.offsetHeight * n.getMinutes() / 60) + "px";
-  $("#hours").appendChild(line);
+  const tr = $("#track"); if (!tr) return;
+  const n = new Date(), m = n.getHours() * 60 + n.getMinutes(), top = (m - +tr.dataset.t0) * PX;
+  if (top < 0 || top > tr.offsetHeight) return;
+  const line = document.createElement("div"); line.className = "nowline"; line.style.top = top + "px";
+  tr.appendChild(line);
 }
 
 
-export { summarize, renderDay, itemRow, hourRow, slotBox, setSplit, nearestFree, placeNowLine };
+export { summarize, renderDay, itemRow, placeNowLine };
