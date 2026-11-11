@@ -65,8 +65,8 @@ function moveToDay(src, want, copy) {
   }, { silent: true });
   if (src.from === "park") mutatePark(p => { p.items = p.items.filter(x => x.id !== src.id); }, { silent: true });
   S.placing = null; render();
-  const msg = [copy ? `Copied to ${timeLabel(start)}.` : "", note, ...moved].filter(Boolean).join(" ");
-  if (msg) toast(msg);
+  const msg = [copy ? `Copied to ${timeLabel(start)}.` : note ? "" : `Moved to ${timeLabel(start)}.`, note, ...moved].filter(Boolean).join(" ");
+  toast(msg, { label: "Undo", act: "undo" });
 }
 
 // Put src into the brain dump ("dump") or the parking lot ("park"), as it is.
@@ -83,7 +83,7 @@ function moveToList(src, to) {
   if (to === "dump") mutateDay(k, d => { d.dump.push(item); }, { silent: true });
   else mutatePark(p => { p.items.push(item); }, { silent: true });
   S.placing = null; render();
-  toast(to === "dump" ? "Moved to this day’s brain dump." : "Moved to the parking lot.");
+  toast(to === "dump" ? "Moved to this day’s brain dump." : "Moved to the parking lot.", { label: "Undo", act: "undo" });
 }
 
 export { srcText, srcLen, moveToDay, moveToList };

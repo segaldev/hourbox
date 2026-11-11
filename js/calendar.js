@@ -179,10 +179,10 @@ async function buildSync(d0, k, remote, opts, api) {
   return { push, rows: rows.filter(r => !(r.kind === "same" && push.some(p => p.title === r.title))), next, failed };
 }
 const calChoice = () => { const c = S.docs.settings && S.docs.settings.calendars; return Array.isArray(c) && c.length ? c : ["primary"]; };
-const setCalChoice = ids => mutate("settings", Object.assign({ kind: "settings" }, S.docs.settings || {}), st => { st.calendars = ids; }, { silent: true });
+const setCalChoice = ids => mutate("settings", Object.assign({ kind: "settings" }, S.docs.settings || {}), st => { st.calendars = ids; }, { silent: true, noUndo: true });
 // Calendars you removed from the picker (saved in your account)
 const calHidden = () => { const h = S.docs.settings && S.docs.settings.hiddenCalendars; return Array.isArray(h) ? h : []; };
-const setCalHidden = ids => mutate("settings", Object.assign({ kind: "settings" }, S.docs.settings || {}), st => { st.hiddenCalendars = ids; }, { silent: true });
+const setCalHidden = ids => mutate("settings", Object.assign({ kind: "settings" }, S.docs.settings || {}), st => { st.hiddenCalendars = ids; }, { silent: true, noUndo: true });
 const calOpts = () => { try { return Object.assign({ own: true, routine: false }, JSON.parse(localStorage.getItem("hourbox-cal-push") || "{}")); } catch (e) { return { own: true, routine: false }; } };
 function calError(e) {
   const c = e && e.code;

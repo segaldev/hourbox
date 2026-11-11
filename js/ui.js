@@ -6,7 +6,7 @@ let toastT;
 function toast(msg, action) { // action: {label, act} shows a button, e.g. Undo
   const t = $("#toast"); t.textContent = msg;
   if (action) { const b = document.createElement("button"); b.className = "toast-btn"; b.dataset.act = action.act; b.textContent = action.label; t.append(" ", b); }
-  t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, action ? 8000 : 2600);
+  t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, action ? 6000 : 2600);
 }
 
 

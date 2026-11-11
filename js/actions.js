@@ -7,12 +7,14 @@ import { askJournal, closeModal, modalOpen, openBoxEditor, openClearDay, openFin
 import { Notify } from "./notify.js";
 import { render } from "./render.js";
 import { googleSignIn, logout, setAppearance, setStyle, syncThemeColor } from "./settings.js";
-import { S, applyRoutine, dayId, getDay, getMonth, getPark, getRoutine, mutate, mutateDay, mutatePark } from "./state.js";
+import { S, applyRoutine, dayId, getDay, getMonth, getPark, getRoutine, mutate, mutateDay, mutatePark, redo, undo } from "./state.js";
 import { CFG_KEY, Store, lsGet, lsSet } from "./store.js";
 import { toast } from "./ui.js";
 import { $, addDays, keyAt, keyId, keyOf, lenOfKey, minOfKey, parseKey, rid, timeLabel, todayKey } from "./util.js";
 
 // ---------- actions ----------
+function doUndo() { if (undo()) toast("Undone.", { label: "Redo", act: "redo" }); else toast("Nothing to undo."); }
+function doRedo() { if (redo()) toast("Redone.", { label: "Undo", act: "undo" }); else toast("Nothing to redo."); }
 function cycleStatus(h) {
   const order = ["planned", "done", "partial", "skipped"];
   mutateDay(S.date, d => { const b = d.boxes[h]; b.status = order[(order.indexOf(b.status || "planned") + 1) % order.length]; });
@@ -82,7 +84,8 @@ document.addEventListener("click", e => {
     case "finish": S.dayMenu = false; render(); openFinish(); break;
     case "journal": S.dayMenu = false; render(); openJournal(); break;
     case "clear-day": S.dayMenu = false; render(); openClearDay(); break;
-    case "undo-clear": if (S.undoClear && S.undoClear.k) { const u = S.undoClear; S.undoClear = null; mutate(dayId(u.k), getDay(u.k), d => { Object.keys(d).forEach(x => delete d[x]); Object.assign(d, u.doc); }); $("#toast").hidden = true; toast("Day restored."); } break;
+    case "undo": $("#toast").hidden = true; doUndo(); break;
+    case "redo": $("#toast").hidden = true; doRedo(); break;
     case "edit-reflection": S.dayMenu = false; render(); openFinish(true); break;
     case "cal-sync": if (t.closest("#daymenu")) { S.dayMenu = false; render(); } calSync(); break;
     case "add-routine": { S.dayMenu = false;
@@ -114,6 +117,11 @@ document.addEventListener("click", e => {
 });
 document.addEventListener("click", e => { if (S.dayMenu && !e.target.closest(".daymenu-wrap")) { S.dayMenu = false; render(); } }, true);
 document.addEventListener("keydown", e => {
+  if ((e.metaKey || e.ctrlKey) && !e.altKey && (e.key === "z" || e.key === "Z" || (e.ctrlKey && e.key === "y"))) {
+    const t = e.target; // in a text field, the browser undoes your typing
+    if (t.matches && t.matches("input:not([type=checkbox]), textarea, [contenteditable]") || modalOpen() || zenOpen() || S.mode === "setup") return;
+    e.preventDefault(); if (e.shiftKey || e.key === "y") doRedo(); else doUndo(); return;
+  }
   if (e.key === "Escape" && S.dayMenu) { S.dayMenu = false; render(); $("#daymenu-btn")?.focus(); return; }
   if ((e.key === "Enter" || e.key === " ") && e.target.matches(".box[data-act], .free[data-act]")) { e.preventDefault(); e.target.click(); }
   if ((e.key === "ArrowUp" || e.key === "ArrowDown") && e.target.matches(".box.filled[data-h]") && !modalOpen()) { // move by 10 minutes; Shift: change length
@@ -152,12 +160,12 @@ document.addEventListener("keydown", e => {
 document.addEventListener("input", e => {
   const t = e.target;
   if (t.classList && t.classList.contains("goal-ta")) fitGoal(t);
-  if (t.dataset.rt === "text") { mutate("routine", getRoutine(), r => { const it = r.items.find(x => x.id === t.dataset.id); if (it) it.text = t.value; }, { silent: true }); return; }
+  if (t.dataset.rt === "text") { mutate("routine", getRoutine(), r => { const it = r.items.find(x => x.id === t.dataset.id); if (it) it.text = t.value; }, { silent: true, noUndo: true }); return; }
   if (t.dataset.input === "prio") {
-    mutateDay(S.date, d => { d.prio[+t.dataset.i].text = t.value; Object.values(d.boxes).forEach(b => { if (b.pi === +t.dataset.i) b.text = t.value.trim() || b.text; }); }, { silent: true });
+    mutateDay(S.date, d => { d.prio[+t.dataset.i].text = t.value; Object.values(d.boxes).forEach(b => { if (b.pi === +t.dataset.i) b.text = t.value.trim() || b.text; }); }, { silent: true, noUndo: true });
     clearTimeout(t._r); t._r = setTimeout(render, 700);
   } else if (t.dataset.input === "goal") {
-    const m = S.date.slice(0, 7); mutate("month-" + m, getMonth(m), mo => { mo.goals[+t.dataset.i] = t.value; }, { silent: true });
+    const m = S.date.slice(0, 7); mutate("month-" + m, getMonth(m), mo => { mo.goals[+t.dataset.i] = t.value; }, { silent: true, noUndo: true });
   }
 });
 $("#datejump").addEventListener("change", e => { if (e.target.value) { S.date = e.target.value; S.placing = null; render(); } });
@@ -219,7 +227,7 @@ document.addEventListener("pointerdown", e => {
   const up = () => {
     h.removeEventListener("pointermove", move); h.removeEventListener("pointerup", up); h.removeEventListener("pointercancel", up);
     resizedAt = Date.now();
-    if (len !== len0) mutateDay(S.date, dd => { if (dd.boxes[key]) { dd.boxes[key].len = len; dd.end = Math.max(dd.end, Math.ceil((s0 + len) / 60)); } });
+    if (len !== len0) { mutateDay(S.date, dd => { if (dd.boxes[key]) { dd.boxes[key].len = len; dd.end = Math.max(dd.end, Math.ceil((s0 + len) / 60)); } }); toast(`Now ${timeLabel(s0)} – ${timeLabel(s0 + len)}.`, { label: "Undo", act: "undo" }); }
     else { tip.remove(); el.classList.remove("resizing"); }
   };
   h.addEventListener("pointermove", move); h.addEventListener("pointerup", up); h.addEventListener("pointercancel", up);

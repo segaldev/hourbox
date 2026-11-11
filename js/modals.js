@@ -77,7 +77,7 @@ function openBoxEditor(h, newStart) {
       if (m === "dup") { $("#modal-root").innerHTML = ""; S.placing = { from: "box", h, text: d.boxes[h].text, copy: true }; render(); }
       if (m === "unbox") { mutateDay(k, dd => { const x = dd.boxes[h]; delete dd.boxes[h]; if (x.pi == null && !x.rt) dd.dump.push(boxToItem(x, rid())); }, { silent: true }); closeModal(); }
       if (m === "park") { const x = d.boxes[h]; mutateDay(k, dd => { delete dd.boxes[h]; }, { silent: true }); mutatePark(p => { p.items.push(boxToItem(x, rid(), true)); }, { silent: true }); closeModal(); toast("Moved to the parking lot."); }
-      if (m === "clear") { mutateDay(k, dd => { delete dd.boxes[h]; }, { silent: true }); closeModal(); }
+      if (m === "clear") { mutateDay(k, dd => { delete dd.boxes[h]; }, { silent: true }); closeModal(); toast("Box deleted.", { label: "Undo", act: "undo" }); }
     });
   const inp = $("#be-text"); inp.focus(); inp.select();
   inp.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); ov.querySelector("#be-save").click(); } });
@@ -109,7 +109,7 @@ function renderJournalList() {
 function openJournal(k = S.date) {
   const d = getDay(k);
   let timer = null;
-  const save = () => { const v = $("#jr-text") ? $("#jr-text").value : null; if (v == null) return; mutateDay(k, dd => { dd.journal = v; }, { silent: true }); };
+  const save = () => { const v = $("#jr-text") ? $("#jr-text").value : null; if (v == null) return; mutateDay(k, dd => { dd.journal = v; }, { silent: true, noUndo: true }); };
   const ov = openModal(`
     <header><span class="eyebrow">${parseKey(k).toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" })}</span><h3>Journal</h3></header>
     <div class="body">
@@ -132,11 +132,9 @@ function openClearDay() {
     <footer><button class="btn" data-m="cancel" id="cd-cancel">Cancel</button><button class="btn danger" data-m="clear" id="cd-clear">Clear day</button></footer>`, btn => {
       if (btn.dataset.m === "cancel") { closeModal(); return; }
       if (btn.dataset.m !== "clear") return;
-      const before = clone(getDay(k));
       mutateDay(k, d => { const b = blankDay(k); Object.keys(d).forEach(x => delete d[x]); Object.assign(d, b, { rtApplied: true }); }, { silent: true });
-      S.undoClear = { k, doc: before };
       closeModal();
-      toast("Day cleared.", { label: "Undo", act: "undo-clear" });
+      toast("Day cleared.", { label: "Undo", act: "undo" });
     });
 }
 function openFinish(editOnly) { // editOnly: change the reflection of a finished day without touching leftovers

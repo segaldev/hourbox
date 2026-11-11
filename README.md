@@ -11,6 +11,7 @@ A simple time-boxing planner: top 3 priorities, brain dump, parking lot, a daily
 - Drag anything between the day, the brain dump and the parking lot. Boxes move as they are: a 20-minute box taken off the day and put back later is still 20 minutes. Hold Option or Shift while dragging a box to copy it.
 - Dropping onto a taken time: flexible boxes step aside; otherwise the box goes to the nearest free time. New items shrink to fit a smaller gap.
 - On a phone: tap the clock on an item, then tap a free time.
+- Undo: ⌘Z (Ctrl+Z on Windows/Android keyboards), redo: ⇧⌘Z. Moves, resizes and deletes also show an **Undo** button. Typing in a text field is undone by the browser as usual.
 
 ## Daily routine
 

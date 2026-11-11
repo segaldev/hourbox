@@ -56,10 +56,29 @@ const getPark = () => Object.assign({ kind: "parking", items: [] }, S.docs.parki
 const getMonth = m => Object.assign({ kind: "month", month: m, goals: ["", "", "", "", ""] }, S.docs["month-" + m] || {});
 
 function mutate(id, base, fn, opts = {}) {
+  if (!opts.noUndo) remember(id, clone(S.docs[id] || base));
   const d = clone(base); fn(d); S.docs[id] = d; Store.save(id); if (!opts.silent) render();
 }
+// Undo / redo (⌘Z, ⇧⌘Z). Each change is remembered with how the document looked before; the changes one action
+// makes (say, a box moving from the day to the parking lot) are undone together. Typing is left to the browser.
+const undoStack = [], redoStack = [];
+let step = null;
+function remember(id, before) {
+  if (!step) {
+    step = []; undoStack.push(step); if (undoStack.length > 60) undoStack.shift(); redoStack.length = 0;
+    queueMicrotask(() => { step = null; });
+  }
+  if (!step.some(c => c.id === id)) step.push({ id, before });
+}
+function swapIn(changes) { // put these versions back and return what was there, for the other direction
+  const now = changes.map(c => ({ id: c.id, before: clone(S.docs[c.id] || c.before) }));
+  for (const c of changes.slice().reverse()) { S.docs[c.id] = clone(c.before); Store.save(c.id); }
+  render(); return now;
+}
+function undo() { const s = undoStack.pop(); if (!s) return false; redoStack.push(swapIn(s)); return true; }
+function redo() { const s = redoStack.pop(); if (!s) return false; undoStack.push(swapIn(s)); return true; }
 const mutateDay = (k, fn, opts) => mutate(dayId(k), getDay(k), fn, opts);
 const mutatePark = (fn, opts) => mutate("parking", getPark(), fn, opts);
 
 
-export { S, DEF_START, DEF_END, blankDay, normDay, dayId, DEFAULT_ROUTINE, getRoutine, dowOf, routineFor, applyRoutine, getDay, hasDay, getPark, getMonth, mutate, mutateDay, mutatePark };
+export { S, DEF_START, DEF_END, blankDay, normDay, dayId, DEFAULT_ROUTINE, getRoutine, dowOf, routineFor, applyRoutine, getDay, hasDay, getPark, getMonth, mutate, mutateDay, mutatePark, undo, redo };
