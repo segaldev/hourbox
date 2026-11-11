@@ -132,7 +132,7 @@ function renderSetup() {
     <p>You’re using Hourbox without an account, so plans stay on this device.</p>
     <div class="setup-actions"><button class="btn primary" type="button" data-act="to-login" id="su-login">Log in or create an account</button></div>
   </section>`;
-  return renderRoutine() + renderCalendarSettings() + renderNotify() + renderQuoteSettings() + account;
+  return renderRoutine() + renderNotify() + renderQuoteSettings() + account;
 }
 async function googleSignIn() {
   const msg = $("#au-msg"), btn = $("#au-google");
@@ -156,14 +156,6 @@ async function logout() {
   location.reload();
 }
 
-function renderCalendarSettings() {
-  if (S.mode !== "fb") return "";
-  const k = S.date, d = getDay(k), label = parseKey(k).toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" });
-  return `<section class="pane setup"><div class="pane-head"><h2>Google Calendar</h2></div>
-    <p>Bring a day’s events from your Google calendars into its boxes. Hourbox only reads your calendar and never changes it.</p>
-    <div class="setup-actions"><button class="btn primary" type="button" data-act="cal-sync" id="cal-sync" data-label="Sync ${esc(label)}" ${d.finished ? "disabled" : ""}><span class="btnicon">${ICON.cal}</span><span>Sync ${esc(label)}</span></button></div>
-    <p class="hint">${d.finished ? "This day is finished. Reopen it to sync its calendar." : "Syncs the day you’re looking at. To sync another day, open that day first."}</p></section>`;
-}
 function renderNotify() {
   let body;
   if (!Notify.supported) body = `<p class="hint">This browser can’t show notifications.</p>`;
@@ -176,4 +168,4 @@ function renderNotify() {
 }
 
 
-export { LENS, DAYN, DAYFULL, routineWarnings, renderRoutine, AUTH_ERR, GOOGLE_G, renderAuth, getAppearance, setAppearance, STYLES, getStyle, setStyle, syncThemeColor, renderLook, renderSetup, googleSignIn, logout, renderCalendarSettings, renderNotify };
+export { LENS, DAYN, DAYFULL, routineWarnings, renderRoutine, AUTH_ERR, GOOGLE_G, renderAuth, getAppearance, setAppearance, STYLES, getStyle, setStyle, syncThemeColor, renderLook, renderSetup, googleSignIn, logout, renderNotify };

@@ -18,7 +18,7 @@ Open **Settings** (the sliders button) to set up boxes every new day starts with
 
 ## Google Calendar (read-only)
 
-In **Settings → Google Calendar**, **Sync** reads that day's events from the Google calendars you pick in its preview (your choice is saved in your account) and shows a preview before changing anything. Hourbox never changes your calendar. Timed events become boxes (snapped to 15 minutes, tagged Meetings); flexible boxes move aside; boxes you planned yourself are never overwritten; events that don't fit can go to the brain dump; all-day and declined events are skipped. Syncing again updates only the calendar boxes and keeps their status.
+On a day, **Day options → Sync Google Calendar** reads that day's events from the Google calendars you pick in its preview (your choice is saved in your account) and shows a preview before changing anything. Hourbox never changes your calendar. Timed events become boxes (snapped to 10 minutes, tagged Meetings); flexible boxes move aside; boxes you planned yourself are never overwritten; events that don't fit can go to the brain dump; all-day and declined events are skipped. Syncing again updates only the calendar boxes and keeps their status.
 
 Write-back (moves, renames, adding your own boxes) is built but switched off: set `CAL_WRITE = true` in `js/calendar.js` and add the `calendar.events` scope to turn it on.
 
@@ -47,7 +47,7 @@ Turn it on in Settings to see a short Stoic or Zen quote at the top of the plann
 
 ## Notifications
 
-In **Settings → Notifications**, turn on notifications for this device. While Hourbox is open (even in the background), you get a notification when a box ends and the next one starts, with a **Mark done** button for the box that just ended. `sw.js` is a tiny service worker used only to show notifications and handle that button; it doesn't cache anything.
+In **Settings → Notifications**, turn on notifications for this device. While Hourbox is open (even in the background), you get a notification when a box ends and the next one starts, with a **Mark done** button for the box that just ended. `sw.js` is a tiny service worker that shows notifications, handles that button, and makes sure the app always loads its newest files; it stores nothing.
 
 ## Where your data lives
 
