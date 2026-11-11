@@ -84,7 +84,7 @@ document.addEventListener("click", e => {
     case "clear-day": S.dayMenu = false; render(); openClearDay(); break;
     case "undo-clear": if (S.undoClear && S.undoClear.k) { const u = S.undoClear; S.undoClear = null; mutate(dayId(u.k), getDay(u.k), d => { Object.keys(d).forEach(x => delete d[x]); Object.assign(d, u.doc); }); $("#toast").hidden = true; toast("Day restored."); } break;
     case "edit-reflection": S.dayMenu = false; render(); openFinish(true); break;
-    case "cal-sync": calSync(); break;
+    case "cal-sync": if (t.closest("#daymenu")) { S.dayMenu = false; render(); } calSync(); break;
     case "add-routine": { S.dayMenu = false;
       let res; mutateDay(k, d => { res = applyRoutine(d, k); });
       toast(res.added.length ? `Added ${res.added.join(", ")}.${res.skipped.length ? ` Skipped ${res.skipped.join(", ")} (time already taken).` : ""}` : `Nothing added. ${res.skipped.join(", ")} overlap boxes you already have.`);

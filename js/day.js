@@ -73,6 +73,7 @@ function renderDay() {
             ${ro ? `<button role="menuitem" class="mi" id="mi-reopen" data-act="reopen">Reopen day</button>
                     <button role="menuitem" class="mi" id="mi-refl" data-act="edit-reflection">${hasRefl ? "Edit reflection" : "Add reflection"}</button>`
                  : `<button role="menuitem" class="mi" id="mi-finish" data-act="finish">Finish day<span>Review hours, leftovers and reflect</span></button>`}
+            ${!ro && S.mode === "fb" ? `<button role="menuitem" class="mi" id="mi-cal" data-act="cal-sync">Sync Google Calendar<span>Bring this day’s events into your boxes</span></button>` : ""}
             <button role="menuitem" class="mi" id="mi-journal" data-act="journal">Journal${(d.journal || "").trim() ? `<span>${(d.journal.trim().split(/\s+/).length)} words written</span>` : `<span>Write your thoughts for this day</span>`}</button>
             ${!ro && !d.rtApplied && routineFor(k).some(it => !Object.values(d.boxes).some(b => b.rt === it.id)) ? `<button role="menuitem" class="mi" id="mi-routine" data-act="add-routine">Add routine</button>` : ""}
             <hr>
