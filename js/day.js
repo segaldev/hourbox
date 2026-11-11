@@ -86,7 +86,7 @@ const countBadge = items => { const n = items.filter(it => !it.done).length; ret
 function itemRow(it, from, ro) {
   const picked = S.placing && S.placing.from === from && S.placing.id === it.id;
   const other = from === "dump" ? `<button class="mini" data-act="to-park" data-id="${it.id}" title="Move to parking lot" aria-label="Move to parking lot">${ICON.park}</button>`
-    : `<button class="mini" data-act="to-dump" data-id="${it.id}" title="Bring into this day’s brain dump" aria-label="Bring into today">${ICON.today}</button>`;
+    : `<button class="mini" data-act="to-dump" data-id="${it.id}" title="Move to this day’s brain dump" aria-label="Move to brain dump">${ICON.today}</button>`;
   return `<li class="item ${picked ? "picked" : ""} ${it.done ? "done" : ""}" ${ro ? "" : `draggable="true" data-drag='${esc(JSON.stringify({ from, id: it.id }))}'`}>
     <input type="checkbox" class="check" data-act="item-done" data-from="${from}" data-id="${it.id}" ${it.done ? "checked" : ""} ${ro ? "disabled" : ""} aria-label="Done: ${esc(it.text)}">
     <span class="txt">${esc(it.text)}</span>

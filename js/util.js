@@ -28,7 +28,7 @@ const TAGNAME = Object.fromEntries(TAGS);
 const ICON = {
   clock: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>',
   park: '<svg viewBox="0 0 24 24"><path d="M7 20V4h6a4.5 4.5 0 0 1 0 9H7"/></svg>',
-  today: '<svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>',
+  today: '<svg viewBox="0 0 24 24"><path d="M12 5.5a3 3 0 0 0-5.3-1.9A3 3 0 0 0 4.3 7.8a3.2 3.2 0 0 0-.6 5.2 3.4 3.4 0 0 0 2.4 5.3A3 3 0 0 0 12 19.5z"/><path d="M12 5.5a3 3 0 0 1 5.3-1.9 3 3 0 0 1 2.4 4.2 3.2 3.2 0 0 1 .6 5.2 3.4 3.4 0 0 1-2.4 5.3A3 3 0 0 1 12 19.5"/><path d="M12 5.5v14M7.5 10.5c1.3 0 2.3.8 2.5 2M16.5 10.5c-1.3 0-2.3.8-2.5 2"/></svg>', // brain: send to the brain dump
   x: '<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>',
   check: '<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></svg>',
   cal: '<svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 9.5h17M8 3v4M16 3v4"/></svg>',
