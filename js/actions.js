@@ -1,7 +1,7 @@
 import { closeZen, openZen, zenOpen } from "./zen.js";
 import { nextQuote, setQuotesOn } from "./quotes.js";
 import { calSync } from "./calendar.js";
-import { NEW_LEN, PX, STEP, fits, snap, snapDown } from "./boxes.js";
+import { NEW_LEN, PX, STEP, applyPush, fits, pushPlan, pushedNote, snap, snapDown } from "./boxes.js";
 import { moveToDay, moveToList, srcLen, srcText } from "./move.js";
 import { askJournal, closeModal, modalOpen, openBoxEditor, openClearDay, openFinish, openJournal } from "./modals.js";
 import { Notify } from "./notify.js";
@@ -130,8 +130,10 @@ document.addEventListener("keydown", e => {
     const key = e.target.dataset.h, d = getDay(S.date); if (d.finished || !d.boxes[key]) return;
     const dir = e.key === "ArrowUp" ? -STEP : STEP, s0 = minOfKey(key), len = lenOfKey(d, key);
     const ns = e.shiftKey ? s0 : s0 + dir, nl = e.shiftKey ? len + dir : len;
-    if (!fits(d, ns, nl, key)) return;
-    mutateDay(S.date, dd => { const b = dd.boxes[key]; delete dd.boxes[key]; dd.boxes[keyAt(ns)] = Object.assign(b, { len: nl }); dd.start = Math.min(dd.start, Math.floor(ns / 60)); dd.end = Math.max(dd.end, Math.ceil((ns + nl) / 60)); });
+    if (nl < STEP) return;
+    const p = fits(d, ns, nl, key) ? [] : pushPlan(d, key, ns, nl); if (!p) return; // longer or later: push the boxes after it
+    mutateDay(S.date, dd => { const b = dd.boxes[key]; delete dd.boxes[key]; applyPush(dd, p); dd.boxes[keyAt(ns)] = Object.assign(b, { len: nl }); dd.start = Math.min(dd.start, Math.floor(ns / 60)); dd.end = Math.max(dd.end, Math.ceil((ns + nl) / 60)); });
+    if (p.length) toast(`Now ${timeLabel(ns)} – ${timeLabel(ns + nl)}.${pushedNote(p)}`, { label: "Undo", act: "undo" });
     document.getElementById("box-" + keyId(keyAt(ns)))?.focus();
   }
   if (e.key === "Escape") { // close what's on top, then go back to the day
@@ -212,27 +214,42 @@ document.addEventListener("drop", e => {
   setTimeout(() => { if (tr) moveToDay(src, start, copy); else moveToList(src, to); }, 0); // after the browser has finished the drag
 });
 
-// resize: drag a box's bottom edge, in 10-minute steps, up to the next box
+// resize: drag a box's bottom edge, in 10-minute steps. Making it longer pushes the boxes after it later.
 document.addEventListener("pointerdown", e => {
   const h = e.target.closest("[data-rsz]"); if (!h) return;
   e.preventDefault(); e.stopPropagation();
   const key = h.dataset.rsz, el = h.closest(".box"), d = getDay(S.date); if (!d.boxes[key] || d.finished) return;
   const s0 = minOfKey(key), len0 = lenOfKey(d, key), y0 = e.clientY;
-  let max = len0; while (fits(d, s0, max + STEP, key)) max += STEP;
-  let len = len0;
+  const track = document.getElementById("track"), t0 = track ? +track.dataset.t0 || 0 : 0;
+  let max = len0; while (pushPlan(d, key, s0, max + STEP)) max += STEP;
+  let len = len0, plan = [], shifted = [];
+  const unshift = () => shifted.forEach(([x, top, t]) => { x.style.top = top; x.classList.remove("pushed"); const bt = x.querySelector(".btime"); if (bt && t != null) bt.textContent = t; });
   const tip = document.createElement("div"); tip.className = "rsz-tip"; el.appendChild(tip); el.classList.add("resizing");
-  const show = () => { el.style.height = (len * PX - 2) + "px"; tip.textContent = `${timeLabel(s0)} – ${timeLabel(s0 + len)} · ${len < 60 ? len + " min" : (len % 60 ? `${Math.floor(len / 60)}h ${len % 60}m` : len / 60 + "h")}`; };
+  const show = () => {
+    el.style.height = (len * PX - 2) + "px";
+    tip.textContent = `${timeLabel(s0)} – ${timeLabel(s0 + len)} · ${len < 60 ? len + " min" : (len % 60 ? `${Math.floor(len / 60)}h ${len % 60}m` : len / 60 + "h")}${plan.length ? ` · ${plan.length} later` : ""}`;
+    unshift(); shifted = [];
+    for (const [k, ns] of plan) { // preview: the boxes being pushed slide down
+      const x = document.getElementById("box-" + keyId(k)); if (!x) continue;
+      const bt = x.querySelector(".btime");
+      shifted.push([x, x.style.top, bt && bt.textContent]); x.style.top = ((ns - t0) * PX + 1).toFixed(1) + "px"; x.classList.add("pushed");
+      if (bt) bt.textContent = `${timeLabel(ns)} – ${timeLabel(ns + lenOfKey(d, k))}`;
+    }
+  };
   show();
   try { h.setPointerCapture(e.pointerId); } catch (err) {}
-  const move = ev => { len = Math.max(STEP, Math.min(max, snap(len0 + (ev.clientY - y0) / PX))); show(); };
+  const move = ev => { len = Math.max(STEP, Math.min(max, snap(len0 + (ev.clientY - y0) / PX))); plan = pushPlan(d, key, s0, len) || []; show(); };
   const up = () => {
     h.removeEventListener("pointermove", move); h.removeEventListener("pointerup", up); h.removeEventListener("pointercancel", up);
     resizedAt = Date.now();
-    if (len !== len0) { mutateDay(S.date, dd => { if (dd.boxes[key]) { dd.boxes[key].len = len; dd.end = Math.max(dd.end, Math.ceil((s0 + len) / 60)); } }); toast(`Now ${timeLabel(s0)} – ${timeLabel(s0 + len)}.`, { label: "Undo", act: "undo" }); }
-    else { tip.remove(); el.classList.remove("resizing"); }
+    if (len !== len0) {
+      const p = pushPlan(d, key, s0, len) || [];
+      mutateDay(S.date, dd => { if (!dd.boxes[key]) return; applyPush(dd, p); dd.boxes[key].len = len; dd.end = Math.max(dd.end, Math.ceil((s0 + len) / 60)); });
+      toast(`Now ${timeLabel(s0)} – ${timeLabel(s0 + len)}.${pushedNote(p)}`, { label: "Undo", act: "undo" });
+    }
+    else { tip.remove(); el.classList.remove("resizing"); unshift(); }
   };
   h.addEventListener("pointermove", move); h.addEventListener("pointerup", up); h.addEventListener("pointercancel", up);
 });
-
 
 export { cycleStatus, fitGoal };

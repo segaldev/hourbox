@@ -28,6 +28,29 @@ function putBox(d, start, box) {
   d.start = Math.min(d.start, Math.floor(start / 60)); d.end = Math.max(d.end, Math.ceil((start + len) / 60));
   return k;
 }
+// Making a box longer (or starting it later) pushes the boxes after it later, only as far as needed: free time
+// in between soaks up the push. Returns [[key, newStart], ...] for the boxes that move ([] if none need to),
+// or null when it can't work: a box would go past midnight, or a box that starts earlier is in the way.
+function pushPlan(d, skip, start, len) {
+  if (start < 0 || start + len > DAY_MIN) return null;
+  if (overlaps(d, start, len, skip).some(k => minOfKey(k) < start)) return null;
+  const after = Object.keys(d.boxes).filter(k => k !== skip && minOfKey(k) >= start).sort((a, b) => minOfKey(a) - minOfKey(b));
+  const out = []; let edge = start + len;
+  for (const k of after) {
+    const s = minOfKey(k), l = lenOfKey(d, k);
+    if (s >= edge) break;
+    if (edge + l > DAY_MIN) return null;
+    out.push([k, edge]); edge += l;
+  }
+  return out;
+}
+function applyPush(d, plan) {
+  const moving = plan.map(([k, s]) => [d.boxes[k], s]);
+  plan.forEach(([k]) => delete d.boxes[k]);
+  moving.forEach(([b, s]) => putBox(d, s, b));
+}
+const pushedNote = plan => plan.length ? ` ${plan.length === 1 ? "The next box" : plan.length + " boxes"} moved later.` : "";
+
 // A box taken off the day becomes a brain dump / parking lot item that remembers its length and details,
 // so it comes back exactly as it was. Items typed in by hand have no box details: they start as NEW_LEN (30 min).
 const BOX_KEEP = ["len", "tag", "flex", "rt", "pi"];
@@ -52,4 +75,4 @@ function migrateBoxes(o) {
   return o;
 }
 
-export { STEP, DAY_MIN, PX, NEW_LEN, snap, snapDown, overlaps, fits, roomAt, nearestStart, putBox, boxToItem, itemToBox, itemLen, migrateBoxes };
+export { STEP, DAY_MIN, PX, NEW_LEN, pushPlan, applyPush, pushedNote, snap, snapDown, overlaps, fits, roomAt, nearestStart, putBox, boxToItem, itemToBox, itemLen, migrateBoxes };

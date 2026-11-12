@@ -1,6 +1,6 @@
 import { summarize } from "./day.js";
 import { render } from "./render.js";
-import { NEW_LEN, STEP, boxToItem, fits, overlaps, putBox, roomAt } from "./boxes.js";
+import { NEW_LEN, STEP, applyPush, boxToItem, fits, overlaps, pushPlan, pushedNote, putBox, roomAt } from "./boxes.js";
 import { S, blankDay, getDay, mutateDay, mutatePark } from "./state.js";
 import { toast } from "./ui.js";
 import { $, ICON, TAGS, addDays, clone, esc, fmtDur, lenOfKey, minOfKey, parseKey, rid, sortedKeys, timeLabel, todayKey } from "./util.js";
@@ -26,14 +26,15 @@ function openBoxEditor(h, newStart) {
   const tagChips = () => TAGS.map(([v, n]) => `<button class="chip tag-chip ${v ? "tg-" + v : ""}" data-m="tag" data-v="${v}" aria-pressed="${(b.tag || "") === v}">${n}</button>`).join("");
   const stChips = () => [["planned", "Planned"], ["done", "Done"], ["partial", "Partly done"], ["skipped", "Skipped"]].map(([v, n]) => `<button class="chip s-${v}" data-m="st" data-v="${v}" aria-pressed="${(b.status || "planned") === v}">${n}</button>`).join("");
   const timeHTML = () => {
-    const ok = fits(d, start, len, skip), clash = ok ? null : overlaps(d, start, len, skip)[0];
+    const fit = fits(d, start, len, skip), push = fit ? [] : pushPlan(d, skip, start, len), ok = !!push;
+    const clash = fit ? null : overlaps(d, start, len, skip).sort((x, y) => minOfKey(x) - minOfKey(y))[0];
     let room = 0; while (fits(d, start, room + STEP, skip)) room += STEP;
     const lens = LEN_CHIPS.includes(len) ? LEN_CHIPS : LEN_CHIPS.concat(len).sort((x, y) => x - y);
     return `<div class="field"><span class="lbl">Starts</span><div class="stepper">
         <button class="btn" data-m="s-" id="be-s-" aria-label="10 minutes earlier">−10</button><span class="val" id="be-start">${timeLabel(start)}</span><button class="btn" data-m="s+" id="be-s+" aria-label="10 minutes later">+10</button></div></div>
       <div class="field"><span class="lbl">Length</span><div class="chips" id="be-lens">${lens.map(n => `<button class="chip" data-m="len" data-v="${n}" aria-pressed="${n === len}">${fmtDur(n)}</button>`).join("")}</div>
         <div class="stepper"><button class="btn" data-m="e-" id="be-e-" aria-label="End 10 minutes earlier">−10</button><span class="val small" id="be-end">ends ${timeLabel(start + len)}</span><button class="btn" data-m="e+" id="be-e+" aria-label="End 10 minutes later">+10</button></div>
-        <p class="hint ${ok ? "" : "err"}" id="be-room">${ok ? (start + room < 1440 ? `The next box starts at ${timeLabel(start + room)}, so this one can be up to ${fmtDur(room)}.` : "")
+        <p class="hint ${ok ? "" : "err"}" id="be-room">${push && push.length ? `“${esc(d.boxes[clash].text)}”${push.length > 1 ? ` and ${push.length - 1} more` : ""} will move later to make room.` : ok ? (start + room < 1440 ? `The next box starts at ${timeLabel(start + room)}. A longer box pushes the ones after it later.` : "")
           : clash ? `This overlaps “${esc(d.boxes[clash].text)}” (${timeLabel(minOfKey(clash))}). Change the start or length.` : "That’s past midnight."}</p></div>`;
   };
   const head = () => `${timeLabel(start)} – ${timeLabel(start + len)}`;
@@ -70,8 +71,10 @@ function openBoxEditor(h, newStart) {
       if (m === "cancel") closeModal();
       if (m === "save") {
         const text = b.text.trim(); if (!text) { $("#be-text").focus(); toast("Type what you’ll do in this time."); return; }
-        if (!fits(d, start, len, skip)) { toast("This time overlaps another box. Change the start or length."); return; }
-        mutateDay(k, dd => { if (skip) delete dd.boxes[skip]; putBox(dd, start, Object.assign({}, b, { text, len })); }, { silent: true }); closeModal();
+        const p = fits(d, start, len, skip) ? [] : pushPlan(d, skip, start, len); // overlaps only boxes after it: push them later
+        if (!p) { toast("This time overlaps an earlier box. Change the start or length."); return; }
+        mutateDay(k, dd => { if (skip) delete dd.boxes[skip]; applyPush(dd, p); putBox(dd, start, Object.assign({}, b, { text, len })); }, { silent: true }); closeModal();
+        if (p.length) toast(`Saved.${pushedNote(p)}`, { label: "Undo", act: "undo" });
       }
       if (m === "move") { $("#modal-root").innerHTML = ""; S.placing = { from: "box", h, text: d.boxes[h].text }; render(); }
       if (m === "dup") { $("#modal-root").innerHTML = ""; S.placing = { from: "box", h, text: d.boxes[h].text, copy: true }; render(); }
