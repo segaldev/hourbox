@@ -1,5 +1,5 @@
 import { closeZen, openZen, zenOpen } from "./zen.js";
-import { setQuotesOn } from "./quotes.js";
+import { nextQuote, setQuotesOn } from "./quotes.js";
 import { calSync } from "./calendar.js";
 import { PX, STEP, fits, snap, snapDown } from "./boxes.js";
 import { moveToDay, moveToList, srcLen, srcText } from "./move.js";
@@ -106,6 +106,7 @@ document.addEventListener("click", e => {
     case "appearance": setAppearance(t.dataset.v); syncThemeColor(); render(); break;
     case "zen": S.dayMenu = false; S.placing = null; render(); openZen(); break;
     case "zen-exit": closeZen(); break;
+    case "quote-next": nextQuote(S.date); render(); if (!e.detail) { const b = document.getElementById("quote-next"); if (b) b.focus(); } break;
     case "quote-on": setQuotesOn(true); break;
     case "quote-off": setQuotesOn(false); break;
     case "notify-on": Notify.enable(); break;

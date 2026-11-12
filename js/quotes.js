@@ -69,14 +69,19 @@ const QUOTES = [
 
 const quotesOn = () => !!(S.docs.settings && S.docs.settings.quote);
 const setQuotesOn = on => mutate("settings", Object.assign({ kind: "settings" }, S.docs.settings || {}), st => { st.quote = on; });
-function quoteFor(k) { // the same quote for a given date everywhere; neighbouring days differ
-  const day = Math.round(parseKey(k).getTime() / 864e5);
-  return QUOTES[((day * 37) % QUOTES.length + QUOTES.length) % QUOTES.length];
-}
+const N = QUOTES.length;
+const baseIdx = k => { const day = Math.round(parseKey(k).getTime() / 864e5); return ((day * 37) % N + N) % N; };
+// the same quote for a given date everywhere; neighbouring days differ. The reload button picks another one,
+// for this window only (a reload brings back the quote of the day).
+const shown = {};
+const quoteIdx = k => shown[k] != null ? shown[k] : baseIdx(k);
+const quoteFor = k => QUOTES[quoteIdx(k)];
+function nextQuote(k) { shown[k] = (quoteIdx(k) + 1 + Math.floor(Math.random() * (N - 1))) % N; }
 function renderQuote(k) {
   if (!quotesOn()) return "";
   const [text, who, src] = quoteFor(k);
-  return `<figure class="quote" id="quote"><span class="qlabel">Quote of the day</span><blockquote>${esc(text)}</blockquote><figcaption>${esc(who)}${src ? `, <cite>${esc(src)}</cite>` : ""}</figcaption></figure>`;
+  return `<figure class="quote" id="quote"><span class="qlabel">Quote of the day</span><blockquote>${esc(text)}</blockquote><figcaption>${esc(who)}${src ? `, <cite>${esc(src)}</cite>` : ""}</figcaption>
+    <button type="button" class="qnext" data-act="quote-next" id="quote-next" aria-label="Show another quote" title="Another quote"><svg viewBox="0 0 24 24"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3"/><path d="M19.5 4.5v4h-4"/></svg></button></figure>`;
 }
 function renderQuoteSettings() {
   const on = quotesOn();
@@ -86,4 +91,4 @@ function renderQuoteSettings() {
   </section>`;
 }
 
-export { QUOTES, quotesOn, setQuotesOn, quoteFor, renderQuote, renderQuoteSettings };
+export { QUOTES, quotesOn, setQuotesOn, quoteFor, nextQuote, renderQuote, renderQuoteSettings };

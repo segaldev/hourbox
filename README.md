@@ -44,7 +44,7 @@ The circle button in the top bar hides everything except the box you're in right
 
 ## Quote of the day
 
-Turn it on in Settings to see a short Stoic or Zen quote at the top of the planner, a different one each day. The quotes are kept in `js/quotes.js`, so they work offline.
+Turn it on in Settings to see a short Stoic or Zen quote at the top of the planner, a different one each day. The ↻ button on the quote shows another one (until you reload). The quotes are kept in `js/quotes.js`, so they work offline.
 
 ## Notifications
 
