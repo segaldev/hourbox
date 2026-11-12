@@ -44,7 +44,15 @@ The circle button in the top bar hides everything except the box you're in right
 
 ## Quote of the day
 
-Turn it on in Settings to see a short Stoic or Zen quote at the top of the planner, a different one each day. The ↻ button on the quote shows another one (until you reload). The quotes are kept in `js/quotes.js`, so they work offline.
+Turn it on in Settings to see a short quote beside the planner, a different one each day. The ↻ button on the quote shows another one (until you reload).
+
+There are over 1,000 quotes in `js/quotes-data.js`, mostly Stoic (Marcus Aurelius, Seneca, Epictetus) and Zen, Buddhist and Taoist (Dōgen, Shunryu Suzuki, Thich Nhat Hanh, the Dhammapada, Laozi, Zhuangzi and others), plus other contemplative writers such as Confucius, Epicurus, Montaigne, Emerson, Thoreau and Tagore. They ship with the app, so they work offline, and are only loaded when the quote is on.
+
+Where they come from:
+- [Wikiquote](https://en.wikiquote.org), only from the sourced sections of each person's page (not "Disputed", "Misattributed" or "Attributed").
+- Public-domain translations on [Project Gutenberg](https://www.gutenberg.org): Marcus Aurelius, *Meditations* (tr. Meric Casaubon); Epictetus, *Golden Sayings* (tr. Hastings Crossley) and *Enchiridion* (tr. Thomas W. Higginson); Seneca, *Morals* (tr. Roger L'Estrange) and *Dialogues* (tr. Aubrey Stewart); the *Dhammapada* (tr. F. Max Müller); Laozi, *Tao Te Ching* (tr. James Legge); *Chuang Tzu* (tr. Herbert Giles); Kaiten Nukariya, *The Religion of the Samurai*; D. T. Suzuki, *Essays in Zen Buddhism*.
+
+Each quote shows its author and, where known, the work and translator.
 
 ## Notifications
 
