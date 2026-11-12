@@ -113,7 +113,7 @@ function timeline(d, keys, startH, endH, ro, nowMin) {
 }
 function freeCell(s0, e0, y) {
   const n = e0 - s0, full = n === 60 && s0 % 60 === 0;
-  const label = full ? "+ Box this hour" : n >= 20 ? `${n} min free` : "+";
+  const label = full ? "+ Add a box" : n >= 20 ? `${n} min free` : "+";
   return `<div class="free${full ? "" : " part"}${n < 20 ? " small" : ""}" role="button" tabindex="0" id="box-${keyId(keyAt(s0))}" data-act="box-new" data-start="${s0}" data-end="${e0}"
     style="top:${y(s0)}px;height:${((e0 - s0) * PX).toFixed(1)}px" aria-label="${timeLabel(s0)} to ${timeLabel(e0)}: free. Box this time">${label}</div>`;
 }

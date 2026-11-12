@@ -1,7 +1,7 @@
 import { closeZen, openZen, zenOpen } from "./zen.js";
 import { nextQuote, setQuotesOn } from "./quotes.js";
 import { calSync } from "./calendar.js";
-import { PX, STEP, fits, snap, snapDown } from "./boxes.js";
+import { NEW_LEN, PX, STEP, fits, snap, snapDown } from "./boxes.js";
 import { moveToDay, moveToList, srcLen, srcText } from "./move.js";
 import { askJournal, closeModal, modalOpen, openBoxEditor, openClearDay, openFinish, openJournal } from "./modals.js";
 import { Notify } from "./notify.js";
@@ -92,7 +92,7 @@ document.addEventListener("click", e => {
       let res; mutateDay(k, d => { res = applyRoutine(d, k); });
       toast(res.added.length ? `Added ${res.added.join(", ")}.${res.skipped.length ? ` Skipped ${res.skipped.join(", ")} (time already taken).` : ""}` : `Nothing added. ${res.skipped.join(", ")} overlap boxes you already have.`);
       break; }
-    case "rt-add": mutate("routine", getRoutine(), r => { const last = r.items.reduce((m, it) => Math.max(m, it.start + it.len), 360); r.items.push({ id: "r-" + rid(), start: Math.min(last, 1425), len: 60, text: "", tag: "", flex: false, days: [0, 1, 2, 3, 4, 5, 6] }); }); break;
+    case "rt-add": mutate("routine", getRoutine(), r => { const last = r.items.reduce((m, it) => Math.max(m, it.start + it.len), 360); r.items.push({ id: "r-" + rid(), start: Math.min(last, 1440 - NEW_LEN), len: NEW_LEN, text: "", tag: "", flex: false, days: [0, 1, 2, 3, 4, 5, 6] }); }); break;
     case "rt-del": mutate("routine", getRoutine(), r => { r.items = r.items.filter(it => it.id !== t.dataset.id); }); break;
     case "rt-day": mutate("routine", getRoutine(), r => { const it = r.items.find(x => x.id === t.dataset.id); const d0 = +t.dataset.d; const days = new Set(it.days || [0,1,2,3,4,5,6]); days.has(d0) ? days.delete(d0) : days.add(d0); it.days = [...days].sort(); }); break;
     case "look": e.preventDefault(); if (S.mode === "setup") break; S.showSetup = !(S.showSetup && S.setupView === "look"); S.setupView = "look"; S.placing = null; render(); window.scrollTo(0, 0); break;

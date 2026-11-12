@@ -1,6 +1,6 @@
 import { summarize } from "./day.js";
 import { render } from "./render.js";
-import { STEP, boxToItem, fits, overlaps, putBox, roomAt } from "./boxes.js";
+import { NEW_LEN, STEP, boxToItem, fits, overlaps, putBox, roomAt } from "./boxes.js";
 import { S, blankDay, getDay, mutateDay, mutatePark } from "./state.js";
 import { toast } from "./ui.js";
 import { $, ICON, TAGS, addDays, clone, esc, fmtDur, lenOfKey, minOfKey, parseKey, rid, sortedKeys, timeLabel, todayKey } from "./util.js";
@@ -22,7 +22,7 @@ function openBoxEditor(h, newStart) {
   const k = S.date, d = getDay(k), isNew = h == null || !d.boxes[h], skip = isNew ? null : h;
   const b = isNew ? { text: "", tag: "", status: "planned" } : clone(d.boxes[h]);
   let start = isNew ? newStart : minOfKey(h);
-  let len = isNew ? Math.max(STEP, Math.min(60, roomAt(d, start))) : lenOfKey(d, h);
+  let len = isNew ? Math.max(STEP, Math.min(NEW_LEN, roomAt(d, start))) : lenOfKey(d, h);
   const tagChips = () => TAGS.map(([v, n]) => `<button class="chip tag-chip ${v ? "tg-" + v : ""}" data-m="tag" data-v="${v}" aria-pressed="${(b.tag || "") === v}">${n}</button>`).join("");
   const stChips = () => [["planned", "Planned"], ["done", "Done"], ["partial", "Partly done"], ["skipped", "Skipped"]].map(([v, n]) => `<button class="chip s-${v}" data-m="st" data-v="${v}" aria-pressed="${(b.status || "planned") === v}">${n}</button>`).join("");
   const timeHTML = () => {

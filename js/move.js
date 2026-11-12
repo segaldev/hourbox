@@ -1,7 +1,7 @@
 // Moving things around: a box, a brain dump item, a parking lot item or a priority can go onto the day
 // (at a 10-minute mark), into the brain dump or into the parking lot. Boxes move as they are: same length,
 // tag and flexibility, also on their way back from the brain dump or parking lot.
-import { boxToItem, fits, itemLen, itemToBox, nearestStart, overlaps, putBox, roomAt } from "./boxes.js";
+import { NEW_LEN, boxToItem, fits, itemLen, itemToBox, nearestStart, overlaps, putBox, roomAt } from "./boxes.js";
 import { render } from "./render.js";
 import { S, getDay, getPark, mutateDay, mutatePark } from "./state.js";
 import { toast } from "./ui.js";
@@ -16,13 +16,13 @@ function srcText(src) {
   if (src.from === "park") return (getPark().items.find(x => x.id === src.id) || {}).text;
   if (src.from === "box") return (d.boxes[src.h] || {}).text;
 }
-// how long the thing would be on the day; `fresh` = it has no length of its own yet (1 hour, may shrink to fit)
+// how long the thing would be on the day; `fresh` = it has no length of its own yet (NEW_LEN, may shrink to fit)
 function srcLen(src) {
   const d = getDay(S.date);
   if (src.from === "box") return { len: lenOfKey(d, src.h), fresh: false };
   const it = src.from === "dump" ? d.dump.find(x => x.id === src.id) : src.from === "park" ? getPark().items.find(x => x.id === src.id) : null;
   const n = it ? itemLen(it) : 0;
-  return { len: n || 60, fresh: !n };
+  return { len: n || NEW_LEN, fresh: !n };
 }
 
 // Put src onto the day at minute `want`. copy: keep the original (Option/Shift-drag, Duplicate…).

@@ -2,6 +2,7 @@
 import { keyAt, lenOfKey, minOfKey } from "./util.js";
 
 const STEP = 10, DAY_MIN = 1440, PX = 1.2; // PX: pixels per minute on the day grid (an hour is 72px)
+const NEW_LEN = 30; // a new box, or an item with no length of its own, starts at 30 minutes
 const snap = m => Math.round(m / STEP) * STEP;
 const snapDown = m => Math.floor(m / STEP) * STEP;
 
@@ -28,7 +29,7 @@ function putBox(d, start, box) {
   return k;
 }
 // A box taken off the day becomes a brain dump / parking lot item that remembers its length and details,
-// so it comes back exactly as it was. Items typed in by hand have no box details: they start as 1 hour.
+// so it comes back exactly as it was. Items typed in by hand have no box details: they start as NEW_LEN (30 min).
 const BOX_KEEP = ["len", "tag", "flex", "rt", "pi"];
 function boxToItem(b, id, toPark) {
   const box = {}; BOX_KEEP.forEach(f => { if (b[f] != null && b[f] !== "" && b[f] !== false) box[f] = b[f]; });
@@ -51,4 +52,4 @@ function migrateBoxes(o) {
   return o;
 }
 
-export { STEP, DAY_MIN, PX, snap, snapDown, overlaps, fits, roomAt, nearestStart, putBox, boxToItem, itemToBox, itemLen, migrateBoxes };
+export { STEP, DAY_MIN, PX, NEW_LEN, snap, snapDown, overlaps, fits, roomAt, nearestStart, putBox, boxToItem, itemToBox, itemLen, migrateBoxes };
