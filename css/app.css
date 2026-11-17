@@ -193,6 +193,8 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 .goals ol { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
 .goals li { display: flex; align-items: baseline; gap: 8px; }
 .goals .prio-n { font-family: var(--f-display); font-size: 14px; color: var(--now); }
+.goals .check { flex: none; align-self: center; }
+.goals li.done textarea { text-decoration: line-through; color: var(--muted); }
 .goals textarea { flex: 1; min-width: 0; border: 0; border-bottom: 1px dashed var(--line); background: transparent; padding: 4px 2px; resize: none; overflow: hidden; font: inherit; line-height: 1.45; color: var(--ink); }
 .goals textarea:focus { outline: none; border-bottom-color: var(--ink); }
 /* Month: a notebook calendar. Ink frame, Mincho numerals, vermilion seal for today and finished days, dotted paper outside the month */

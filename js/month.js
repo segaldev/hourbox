@@ -4,7 +4,8 @@ import { esc, fmtDur, keyOf, parseKey, todayKey } from "./util.js";
 
 function renderMonth() {
   const m = S.date.slice(0, 7), mo = getMonth(m), first = parseKey(m + "-01");
-  const goals = mo.goals.map((g, i) => `<li><span class="prio-n">${i + 1}</span><textarea id="mg-${i}" class="goal-ta" data-input="goal" data-i="${i}" rows="1" placeholder="${i === 0 ? "A goal for this month" : "Another goal"}" maxlength="200">${esc(g)}</textarea></li>`).join("");
+  const done = mo.done || [];
+  const goals = mo.goals.map((g, i) => `<li class="${done[i] ? "done" : ""}"><span class="prio-n">${i + 1}</span><input type="checkbox" class="check" id="mgc-${i}" data-act="goal-done" data-i="${i}" ${done[i] ? "checked" : ""} aria-label="Goal ${i + 1} done"><textarea id="mg-${i}" class="goal-ta" data-input="goal" data-i="${i}" rows="1" placeholder="${i === 0 ? "A goal for this month" : "Another goal"}" maxlength="200">${esc(g)}</textarea></li>`).join("");
   const offset = (first.getDay() + 6) % 7; // Monday first
   const startD = new Date(first); startD.setDate(1 - offset);
   const last = new Date(first.getFullYear(), first.getMonth() + 1, 0);

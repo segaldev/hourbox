@@ -44,6 +44,7 @@ document.addEventListener("click", e => {
       if (t.dataset.from === "dump") mutateDay(k, d => { const it = d.dump.find(x => x.id === id); if (it) it.done = done; });
       else mutatePark(p => { const it = p.items.find(x => x.id === id); if (it) it.done = done; });
       break; }
+    case "goal-done": { const m = S.date.slice(0, 7), i = +t.dataset.i; mutate("month-" + m, getMonth(m), mo => { const old = mo.done || []; mo.done = mo.goals.map((_, j) => j === i ? t.checked : !!old[j]); }); break; }
     case "prio-done": mutateDay(k, d => { d.prio[+t.dataset.i].done = t.checked; }); break;
     case "pick": {
       const src = t.dataset.from === "prio" ? { from: "prio", i: +t.dataset.i } : { from: t.dataset.from, id: t.dataset.id };
