@@ -1,4 +1,5 @@
 import { closeZen, openZen, zenOpen } from "./zen.js";
+import { setGratOn } from "./gratitude.js";
 import { nextQuote, setQuotesOn } from "./quotes.js";
 import { calSync } from "./calendar.js";
 import { NEW_LEN, PX, STEP, applyPush, fits, pushPlan, pushedNote, snap, snapDown } from "./boxes.js";
@@ -108,6 +109,8 @@ document.addEventListener("click", e => {
     case "zen": S.dayMenu = false; S.placing = null; render(); openZen(); break;
     case "zen-exit": closeZen(); break;
     case "quote-next": nextQuote(S.date); render(); if (!e.detail) { const b = document.getElementById("quote-next"); if (b) b.focus(); } break;
+    case "grat-on": setGratOn(true); break;
+    case "grat-off": setGratOn(false); break;
     case "quote-on": setQuotesOn(true); break;
     case "quote-off": setQuotesOn(false); break;
     case "notify-on": Notify.enable(); break;
@@ -160,14 +163,18 @@ document.addEventListener("change", e => {
 function fitGoal(ta) { ta.style.height = "auto"; ta.style.height = ta.scrollHeight + "px"; }
 document.addEventListener("keydown", e => {
   if (e.key === "Enter" && e.target.classList && e.target.classList.contains("goal-ta")) { e.preventDefault(); document.getElementById("mg-" + (+e.target.dataset.i + 1))?.focus(); }
+  if (e.key === "Enter" && e.target.id === "grat-in") { e.preventDefault(); e.target.blur(); }
 });
 document.addEventListener("input", e => {
   const t = e.target;
-  if (t.classList && t.classList.contains("goal-ta")) fitGoal(t);
+  if (t.classList && t.classList.contains("goal-ta") || t.id === "grat-in") fitGoal(t);
   if (t.dataset.rt === "text") { mutate("routine", getRoutine(), r => { const it = r.items.find(x => x.id === t.dataset.id); if (it) it.text = t.value; }, { silent: true, noUndo: true }); return; }
   if (t.dataset.input === "prio") {
     mutateDay(S.date, d => { d.prio[+t.dataset.i].text = t.value; Object.values(d.boxes).forEach(b => { if (b.pi === +t.dataset.i) b.text = t.value.trim() || b.text; }); }, { silent: true, noUndo: true });
     clearTimeout(t._r); t._r = setTimeout(render, 700);
+  } else if (t.dataset.input === "grat") {
+    mutateDay(S.date, d => { d.grat = t.value; }, { silent: true, noUndo: true });
+    t.closest(".grat")?.classList.toggle("filled", !!t.value.trim());
   } else if (t.dataset.input === "goal") {
     const m = S.date.slice(0, 7); mutate("month-" + m, getMonth(m), mo => { mo.goals[+t.dataset.i] = t.value; }, { silent: true, noUndo: true });
   }

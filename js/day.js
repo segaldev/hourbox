@@ -1,3 +1,4 @@
+import { renderGratitude } from "./gratitude.js";
 import { renderQuote } from "./quotes.js";
 import { PX, itemLen } from "./boxes.js";
 import { DEF_END, DEF_START, S, getDay, getPark, routineFor } from "./state.js";
@@ -56,8 +57,8 @@ function renderDay() {
       </div>` : ""}
     </div>` : "";
   const dl = parseKey(k).toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" });
-  const quote = renderQuote(k);
-  return `<div class="day${quote ? " has-quote" : ""}">${quote}
+  const side = renderQuote(k) + renderGratitude(d, ro); // quote of the day and gratitude box, beside the planner
+  return `<div class="day${side ? " has-quote" : ""}">${side ? `<div class="side">${side}</div>` : ""}
     <section class="pane a-prio"><div class="pane-head"><h2>Top 3 priorities</h2><span class="hint">Box them first</span></div><ol class="prio-list">${prio}</ol></section>
     <section class="pane a-dump" data-dropzone="dump"><div class="pane-head"><h2>Brain dump${countBadge(d.dump)}</h2><span class="hint">This day only</span></div>
       ${ro ? "" : `<form class="add" data-form="dump"><input type="text" id="add-dump" placeholder="Add a thought or task, then Enter" maxlength="200" autocomplete="off"><button class="btn" type="submit">Add</button></form>`}

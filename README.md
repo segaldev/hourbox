@@ -42,6 +42,10 @@ The photo styles use pictures from Wikimedia Commons, slightly blurred, dimmed o
 
 The circle button in the top bar hides everything except the box you're in right now, shown big, with a circle that slowly fills as its time passes. Back-to-back boxes with the same name count as one block. Press Esc or the small × to leave.
 
+## Gratitude box
+
+Turn it on in **Settings → Gratitude box** to get a small box beside the planner (with the quote of the day, or on its own) where you write one simple thing you're grateful for. It's saved with that day, so every day starts empty and past days keep what you wrote.
+
 ## Quote of the day
 
 Turn it on in Settings to see a short quote beside the planner, a different one each day. The ↻ button on the quote shows another one (until you reload).

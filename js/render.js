@@ -24,7 +24,7 @@ function render() {
   }
   $("#app").innerHTML = S.view === "journal" ? renderJournalList() : (S.view === "day" ? renderDay() : renderQuote(S.date) + renderMonth());
   placeNowLine();
-  document.querySelectorAll("textarea.goal-ta").forEach(fitGoal);
+  document.querySelectorAll("textarea.goal-ta, #grat-in").forEach(fitGoal);
   if (fid) { const el = document.getElementById(fid); if (el) { el.focus(); try { if (ss != null) el.setSelectionRange(ss, se); } catch (e) {} } }
   const pb = $("#placebar"); pb.hidden = !S.placing; if (S.placing) $("#placetext").textContent = S.placing.copy ? `Tap a box to put a copy of “${S.placing.text}”` : `Tap an hour to schedule “${S.placing.text}”`;
   document.body.classList.toggle("placing", !!S.placing);
