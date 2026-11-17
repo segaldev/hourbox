@@ -98,15 +98,17 @@ function askJournal() {
   $("#aj-write").focus();
 }
 function renderJournalList() {
-  const entries = Object.keys(S.docs).filter(id => id.startsWith("day-") && (S.docs[id].journal || "").trim())
+  const has = d => (d.journal || "").trim() || (d.grat || "").trim(); // a journal entry, a gratitude entry, or both
+  const entries = Object.keys(S.docs).filter(id => id.startsWith("day-") && has(S.docs[id]))
     .map(id => id.slice(4)).sort().reverse();
   const body = entries.length ? entries.map(k => {
-    const d = parseKey(k), text = S.docs["day-" + k].journal.trim();
+    const d = parseKey(k), doc = S.docs["day-" + k], text = (doc.journal || "").trim(), grat = (doc.grat || "").trim();
     return `<article class="jentry">
       <header><h2>${d.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric", year: d.getFullYear() !== new Date().getFullYear() ? "numeric" : undefined })}</h2>
-        <span class="jlinks"><button class="linkbtn" type="button" data-act="journal-edit" data-k="${k}" id="je-${k}">Edit</button><button class="linkbtn" type="button" data-act="journal-open" data-k="${k}" id="jo-${k}">Open day</button></span></header>
-      <p>${esc(text)}</p></article>`; }).join("")
-    : `<p class="hint jempty">No journal entries yet. To write one, open a day and choose <b>Day options → Journal</b>.</p>`;
+        <span class="jlinks"><button class="linkbtn" type="button" data-act="journal-edit" data-k="${k}" id="je-${k}">${text ? "Edit" : "Write"}</button><button class="linkbtn" type="button" data-act="journal-open" data-k="${k}" id="jo-${k}">Open day</button></span></header>
+      ${grat ? `<p class="jgrat"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg><span><span class="sr">Grateful for: </span>${esc(grat)}</span></p>` : ""}
+      ${text ? `<p>${esc(text)}</p>` : ""}</article>`; }).join("")
+    : `<p class="hint jempty">No journal entries yet. To write one, open a day and choose <b>Day options → Journal</b>. Gratitude box entries also show up here.</p>`;
   return `<section class="journal-list"><h1>Journal</h1>${body}</section>`;
 }
 function openJournal(k = S.date) {

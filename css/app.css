@@ -326,6 +326,10 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 .jentry h2 { margin: 0; font-family: var(--f-display); font-weight: 600; font-size: 18px; }
 .jlinks { display: flex; gap: 14px; font-size: 13px; }
 .jentry p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 15.5px; line-height: 1.7; max-width: 65ch; }
+.jentry p.jgrat { display: flex; gap: 8px; align-items: baseline; font-family: var(--f-display); font-style: italic; line-height: 1.5; color: var(--ink); }
+.jentry p.jgrat + p { margin-top: 10px; }
+.jgrat svg { flex: none; width: 14px; height: 14px; fill: var(--accent); transform: translateY(2px); }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .jempty { text-align: center; padding: 30px 0; }
 .daymenu-wrap { position: relative; }
 .chev { margin-left: 8px; font-size: 11px; opacity: .8; }

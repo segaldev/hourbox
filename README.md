@@ -44,7 +44,7 @@ The circle button in the top bar hides everything except the box you're in right
 
 ## Gratitude box
 
-Turn it on in **Settings → Gratitude box** to get a small box beside the planner (with the quote of the day, or on its own) where you write one simple thing you're grateful for. It's saved with that day, so every day starts empty and past days keep what you wrote.
+Turn it on in **Settings → Gratitude box** to get a small box beside the planner (with the quote of the day, or on its own) where you write one simple thing you're grateful for. It's saved with that day, so every day starts empty and past days keep what you wrote. Entries also show in the Journal view, with a small heart, next to that day's journal.
 
 ## Quote of the day
 
